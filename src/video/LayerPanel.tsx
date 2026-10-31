@@ -1,0 +1,13 @@
+'use client';
+import { Copy, Eye, EyeOff, Lock, Unlock, Trash2 } from 'lucide-react';
+import { items, type LayerSettings } from './editing';
+import type { Timeline } from './model';
+
+export default function LayerPanel({ timeline, assets, selected, disabled, query, onQuery, onSelect, onSettings, onDuplicate, onDelete }: { timeline: Timeline; assets: { id: string; name: string }[]; selected: string | null; disabled: boolean; query: string; onQuery: (value: string) => void; onSelect: (id: string) => void; onSettings: (id: string, patch: LayerSettings) => void; onDuplicate: (id: string) => void; onDelete: (id: string) => void }) {
+  const layers = items(timeline, assets).filter(i => `${i.label} ${i.kind}`.toLowerCase().includes(query.toLowerCase()));
+  return <fieldset className="ve-fields" disabled={disabled}><input className="finput" aria-label="Search layers" placeholder="Find a layer…" value={query} onChange={e => onQuery(e.target.value)}/><p className="tool-note">Select any layer to jump to it and open its settings. Locks protect manual and AI edits.</p><div className="ve-layer-list">{layers.map(item => { const setting = timeline.layerSettings?.[item.id] ?? {}; return <div key={item.id} className={`ve-layer-row${selected === item.id ? ' is-selected' : ''}`}>
+    <button type="button" className="ve-layer-select" onClick={() => onSelect(item.id)}><b>{item.label || 'Untitled'}</b><small>{item.kind} · {item.start.toFixed(2)}s–{(item.start + item.duration).toFixed(2)}s</small></button>
+    <input aria-label={`Rename ${item.label}`} value={setting.name ?? ''} placeholder="Layer name" maxLength={80} onChange={e => onSettings(item.id, { name: e.target.value })}/>
+    <div className="ve-layer-actions"><button type="button" disabled={setting.locked} title={setting.hidden ? 'Show layer' : 'Hide layer'} aria-label={`${setting.hidden ? 'Show' : 'Hide'} ${item.label}`} onClick={() => onSettings(item.id, { hidden: !setting.hidden })}>{setting.hidden ? <EyeOff size={14}/> : <Eye size={14}/>}</button><button type="button" title={setting.locked ? 'Unlock layer' : 'Lock layer'} aria-label={`${setting.locked ? 'Unlock' : 'Lock'} ${item.label}`} onClick={() => onSettings(item.id, { locked: !setting.locked })}>{setting.locked ? <Lock size={14}/> : <Unlock size={14}/>}</button><button type="button" title="Duplicate layer" aria-label={`Duplicate ${item.label}`} onClick={() => onDuplicate(item.id)}><Copy size={14}/></button><button type="button" disabled={setting.locked} title="Delete layer" aria-label={`Delete ${item.label}`} onClick={() => onDelete(item.id)}><Trash2 size={14}/></button></div>
+  </div>; })}</div>{!layers.length && <p className="tool-note">No matching layers.</p>}</fieldset>;
+}

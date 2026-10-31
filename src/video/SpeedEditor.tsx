@@ -1,0 +1,19 @@
+'use client';
+import { useState } from 'react';
+import { Gauge, Plus, Trash2 } from 'lucide-react';
+import { SPEED_PRESETS, type SpeedPoint } from './clip-motion';
+import { Numeric } from './MotionEditor';
+export default function SpeedEditor({ points, disabled, onChange }: { points?: SpeedPoint[]; disabled: boolean; onChange: (points: SpeedPoint[] | undefined) => void }) {
+  const [active, setActive] = useState(0), [draft, setDraft] = useState<SpeedPoint[] | null>(null), p = draft ?? points ?? [], i = Math.min(active, Math.max(0, p.length - 1)), selected = p[i];
+  const drag = (e: React.PointerEvent<SVGCircleElement>, index: number) => {
+    if (disabled) return; const target = e.currentTarget, matrix = target.ownerSVGElement!.getScreenCTM()?.inverse(); if (!matrix) return; e.preventDefault(); target.setPointerCapture(e.pointerId); setActive(index); let next = p;
+    const move = (ev: PointerEvent) => { const point = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(matrix), x = (point.x - 12) / 296, y = (point.y - 12) / 88; next = p.map((k, j) => j === index ? { at: index === 0 ? 0 : index === p.length - 1 ? 1 : Math.max(p[index - 1].at + .01, Math.min(p[index + 1].at - .01, x)), speed: Math.max(.25, Math.min(4, Math.round((4 - y * 3.75) * 20) / 20)) } : k); setDraft(next); };
+    const finish = (ev: PointerEvent) => { target.removeEventListener('pointermove', move); target.removeEventListener('pointerup', finish); target.removeEventListener('pointercancel', finish); setDraft(null); if (ev.type !== 'pointercancel') onChange(next); };
+    target.addEventListener('pointermove', move); target.addEventListener('pointerup', finish, { once: true }); target.addEventListener('pointercancel', finish, { once: true });
+  };
+  return <details className="ve-work-section" open={!!points}><summary><Gauge size={14}/>Speed curve<span>{points ? 'Custom' : 'Constant'}</span></summary><fieldset className="ve-fields" disabled={disabled}><p className="ve-work-hint">Drag points to ramp smoothly. Changing speed changes the clip’s length; attached layers follow its start.</p><div className="ve-keyframe-list">{Object.keys(SPEED_PRESETS).map(name => <button type="button" key={name} onClick={() => { onChange(SPEED_PRESETS[name].map(p => ({ ...p }))); setActive(0); }}>{name}</button>)}</div>
+    {selected && <><svg className="ve-motion-graph" viewBox="0 0 320 112" aria-label="Speed curve"><path d="M12 100H308M12 12V100" className="ve-graph-grid"/><line x1={12} x2={308} y1={82.4} y2={82.4} className="ve-graph-grid"/><polyline points={p.map(k => `${12 + k.at * 296},${100 - (k.speed - .25) / 3.75 * 88}`).join(' ')} className="ve-graph-line" fill="none"/>{p.map((k, j) => <circle key={j} cx={12 + k.at * 296} cy={100 - (k.speed - .25) / 3.75 * 88} r={j === i ? 6 : 4.5} className={j === i ? 'is-active' : ''} onPointerDown={e => drag(e, j)}/>)}</svg><div className="ve-keyframe-list">{p.map((k, j) => <button type="button" className={i === j ? 'is-active' : ''} key={j} onClick={() => setActive(j)}>{Math.round(k.at * 100)}% · {k.speed}×</button>)}</div>
+      <Numeric key={`${i}-${selected.speed}`} label="Point speed" value={selected.speed} min={.25} max={4} step={.05} onChange={speed => onChange(p.map((k, j) => j === i ? { ...k, speed } : k))}/>
+      <div className="ve-field-pair"><button type="button" className="ebtn" disabled={p.length >= 12 || i === p.length - 1} onClick={() => { onChange([...p.slice(0, i + 1), { at: (p[i].at + p[i + 1].at) / 2, speed: (p[i].speed + p[i + 1].speed) / 2 }, ...p.slice(i + 1)]); setActive(i + 1); }}><Plus size={13}/>Point</button><button type="button" className="ebtn" disabled={i === 0 || i === p.length - 1} onClick={() => { onChange(p.filter((_, j) => j !== i)); setActive(i - 1); }}><Trash2 size={13}/>Point</button></div><button className="ebtn" type="button" onClick={() => onChange(undefined)}>Return to constant speed</button></>}
+  </fieldset></details>;
+}

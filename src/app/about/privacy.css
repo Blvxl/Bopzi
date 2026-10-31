@@ -1,0 +1,10 @@
+.about-page { max-width:760px; margin:0 auto; padding:64px 24px 100px; color:#f3f1ef; font:15px/1.75 var(--font-sans); }
+.about-back { display:inline-block; margin-bottom:30px; color:#ff987d; text-decoration:none; font-weight:600; }
+.about-page h1 { margin:0; font:700 clamp(34px,5vw,48px)/1.1 var(--font-display); letter-spacing:-.04em; }
+.about-intro { color:#bcb7b2; font-size:16px; }
+.about-page section { margin-top:36px; padding-top:24px; border-top:1px solid #ffffff1b; }
+.about-page h2 { font-size:19px; margin:0 0 8px; }
+.about-page section p { color:#c4beba; margin:10px 0; }
+.about-page a:focus-visible { outline:2px solid #ff987d; outline-offset:4px; }
+.license-text { margin-top:28px; white-space:pre-wrap; overflow-wrap:anywhere; color:#d6d0ca; font:14px/1.7 var(--font-mono); }
+.about-page section a { color:#ff987d; }

@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+build/
+release/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local configuration and credentials
+.env*
+!.env.example
+.claude/
+
+# Local work products and backups
+artifacts/
+backups/
+reports/
+research_notes/
+docs/redesign/
+
+# Logs and operating system files
+*.log
+.DS_Store
+Thumbs.db

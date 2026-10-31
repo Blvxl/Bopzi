@@ -1,0 +1,67 @@
+@import "tailwindcss";
+/* Bopzi tokens: neutral greys like a native dark app, one brand accent, system blue for focus. */
+@theme {
+  --color-ink: #111113;
+  --color-night: #111113;
+  --color-night-2: #18181b;
+  --color-night-3: #202023;
+  --color-edge: #2a2a2e;
+  --color-edge-strong: #3a3a3f;
+  --color-ivory: #f5f5f7;
+  --color-ivory-dim: #98989f;
+  /* brand accent, for the one action that matters; text on it is always `ink` */
+  --color-signal: #ff5a36;
+  --color-signal-hot: #ff7654;
+  --color-focus: #0a84ff;
+  /* editor chrome */
+  --color-char: #141416;
+  --color-ui-1: #1c1c1f;
+  --color-ui-2: #2a2a2d;
+  --color-ui-3: #36363a;
+  --color-ui-line: #2e2e32;
+  --color-ui-fg: #f5f5f7;
+  --color-ui-dim: #98989f;
+  --color-ui-focus: #0a84ff;
+  /* semantic, the system colours */
+  --color-ok: #30d158;
+  --color-warn: #ffd60a;
+  --color-danger: #ff453a;
+}
+/* The interface uses the operating system's own typeface: SF on a Mac, Segoe UI Variable on Windows.
+   The loaded fonts stay for the canvas, where they are thumbnail fonts. */
+@theme inline {
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+}
+/* Three corner sizes for the whole app. */
+:root {
+  --r-sm: 8px;   /* controls: buttons, fields, chips, rows */
+  --r-md: 12px;  /* cards, menus, popovers, toasts */
+  --r-lg: 16px;  /* dialogs, the prompt bar, sheets */
+}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 72px;
+  }
+  body {
+    background: var(--color-night);
+    color: var(--color-ivory);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "kern";
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

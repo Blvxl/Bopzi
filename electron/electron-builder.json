@@ -1,0 +1,47 @@
+{
+  "appId": "com.bopzi.studio",
+  "productName": "Bopzi",
+  "artifactName": "Bopzi-Setup-${version}-win-${arch}.${ext}",
+  "compression": "normal",
+  "npmRebuild": false,
+  "directories": {
+    "buildResources": "../build/desktop",
+    "output": "../release"
+  },
+  "files": [
+    "main.cjs",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "../.next/standalone",
+      "to": "app-server"
+    },
+    {
+      "from": "../.next/static",
+      "to": "app-server/.next/static"
+    },
+    {
+      "from": "../public",
+      "to": "app-server/public"
+    },
+    {
+      "from": "../build/desktop/bin",
+      "to": "bin"
+    }
+  ],
+  "win": {
+    "icon": "../build/desktop/icon.ico",
+    "target": ["nsis"]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "differentialPackage": false,
+    "useZip": true,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Bopzi"
+  }
+}
