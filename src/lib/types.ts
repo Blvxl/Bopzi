@@ -177,6 +177,8 @@ export type PromptState = {
 
 export type Project = {
   id: string;
+  /** The signed-in account this project belongs to. */
+  owner?: string;
   name: string;
   createdAt: number;
   updatedAt: number;

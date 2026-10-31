@@ -3,6 +3,7 @@
 // Used by the local Bopzi server and by the standalone helper (bopzi-helper.mjs). No dependencies.
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { access, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os, { homedir } from 'node:os';
 import path from 'node:path';
@@ -74,10 +75,50 @@ export async function codexAccount() {
     const claims = JSON.parse(Buffer.from(String(auth?.tokens?.id_token).split('.')[1], 'base64url').toString());
     const plan = claims['https://api.openai.com/auth']?.chatgpt_plan_type;
     if (auth?.auth_mode !== 'chatgpt' || typeof claims.email !== 'string') return null;
-    return { name: typeof claims.name === 'string' ? claims.name : '', email: claims.email, plan: typeof plan === 'string' ? plan : '' };
+    const owner = claims['https://api.openai.com/auth']?.chatgpt_user_id ?? claims.sub ?? claims.email;
+    // A stable label for this person's projects, not the account's own id.
+    const id = createHash('sha256').update(String(owner)).digest('hex').slice(0, 24);
+    return { id, name: typeof claims.name === 'string' ? claims.name : '', email: claims.email, plan: typeof plan === 'string' ? plan : '' };
   } catch {
     return null;
   }
+}
+
+let signingIn = null;
+/** Starts Codex's own browser sign-in and resolves with its page address once Codex prints it. */
+export async function codexSignIn() {
+  const file = await findCodex();
+  if (!file) throw new Error('Codex is not installed on this computer.');
+  codexCancelSignIn();
+  const child = spawn(file, ['login'], { windowsHide: true });
+  signingIn = child;
+  // Nobody is left waiting on a sign-in that was abandoned.
+  const timer = setTimeout(() => { if (signingIn === child) codexCancelSignIn(); }, 600_000);
+  child.on('close', () => { clearTimeout(timer); if (signingIn === child) signingIn = null; });
+  return new Promise((resolve, reject) => {
+    let out = '';
+    const seen = (d) => {
+      out += d;
+      const url = /https:\/\/\S+/.exec(out)?.[0];
+      if (url) resolve(url);
+    };
+    child.stdout?.on('data', seen);
+    child.stderr?.on('data', seen);
+    child.on('error', () => reject(new Error('Codex could not start the sign-in.')));
+    setTimeout(() => resolve(''), 4000);
+  });
+}
+export function codexCancelSignIn() {
+  if (signingIn) stop(signingIn);
+  signingIn = null;
+}
+/** Signs this computer out of Codex, which ends Bopzi's session with it. */
+export async function codexSignOut() {
+  const file = await findCodex();
+  if (!file) throw new Error('Codex is not installed on this computer.');
+  await probe(file, ['logout'], true);
+  picture = null;
+  if ((await codexStatus()).connected) throw new Error('Codex is still signed in. Try again.');
 }
 
 /** The profile picture set in ChatGPT, kept for an hour per account. Returns null when there is none to show. */

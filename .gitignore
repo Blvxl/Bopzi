@@ -23,3 +23,12 @@ docs/redesign/
 *.log
 .DS_Store
 Thumbs.db
+
+# Login server data
+accounts.json
+accounts.json.tmp
+
+# Signing keys and license records never go in the repository
+*.pem
+licenses.json
+license.json

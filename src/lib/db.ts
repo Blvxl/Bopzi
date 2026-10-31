@@ -47,17 +47,30 @@ async function store(name: 'projects' | 'assets' | 'attachments', mode: IDBTrans
   return (await openDb()).transaction(name, mode).objectStore(name);
 }
 
+/** Set when someone signs in. Projects live in one database, so each is marked with its owner. */
+let owner = '';
+export const setOwner = (id: string) => { owner = id; };
+const mine = (p: Project | undefined) => (p && p.owner === owner ? p : undefined);
+
+/** Projects from before accounts go to the first person who signs in on this device. */
+export async function claimProjects() {
+  const all = await wrap<Project[]>((await store('projects')).getAll());
+  const known = /^[a-f0-9]{24}$/;
+  const accounts = new Set(all.map((p) => p.owner).filter((o) => o && o !== owner && known.test(o)));
+  for (const project of all) if (!project.owner || (accounts.size === 1 && accounts.has(project.owner))) await putProject({ ...project, owner });
+}
+
 export async function putProject(project: Project) {
-  await wrap((await store('projects', 'readwrite')).put(project));
+  await wrap((await store('projects', 'readwrite')).put({ ...project, owner: project.owner ?? owner }));
 }
 
 export async function getProject(id: string) {
-  return wrap<Project | undefined>((await store('projects')).get(id));
+  return mine(await wrap<Project | undefined>((await store('projects')).get(id)));
 }
 
 export async function listProjects() {
   const all = await wrap<Project[]>((await store('projects')).getAll());
-  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+  return all.filter((p) => p.owner === owner).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function putAsset(asset: AssetRecord) {

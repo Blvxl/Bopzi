@@ -9,8 +9,9 @@
     "start": "next start --hostname 127.0.0.1",
     "desktop": "electron .",
     "desktop:prepare": "node scripts/prepare-desktop.mjs",
-    "desktop:package": "npm run desktop:prepare && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
-    "desktop:pack": "npm run build && npm run desktop:prepare && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
+    "desktop:package": "node scripts/prepare-desktop.mjs --arm64 && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
+    "desktop:pack": "npm run build && node scripts/prepare-desktop.mjs --arm64 && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
+    "desktop:pack:x64": "npm run build && node scripts/prepare-desktop.mjs --x64 && cd electron && electron-builder --config electron-builder.json --win nsis --x64",
     "typecheck": "tsc --noEmit",
     "helper": "node helper/bopzi-helper.mjs"
   },

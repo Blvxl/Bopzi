@@ -2,7 +2,7 @@ import { posePick, refinePrompt, thumbnailPrompt, type ThumbnailBrief, type Thum
 import { poseGuide } from './pose';
 import { styleReferenceImage } from './references';
 import { styleNotes } from './style';
-import { codexAccount, codexImage, codexPicture, codexStatus } from '../../../helper/codex-core.mjs';
+import { codexAccount, codexCancelSignIn, codexImage, codexPicture, codexSignIn, codexSignOut, codexStatus } from '../../../helper/codex-core.mjs';
 export { thumbnailPrompt, type ThumbnailBrief, type ThumbnailRefine } from './prompt';
 
 // Images are made by the Codex app on this computer, on the plan it is signed in with.
@@ -34,6 +34,9 @@ export function prepareRefine(refine: ThumbnailRefine): Prepared {
 /** The signed-in account for this computer's own pages. The helper does not offer this. */
 export const connectedAccount = () => codexAccount();
 export const connectedPicture = () => codexPicture();
+export const signIn = () => codexSignIn();
+export const cancelSignIn = () => codexCancelSignIn();
+export const signOut = () => codexSignOut();
 
 /** `cancel` is the browser request's signal: when the user cancels, the work behind it stops too. */
 export async function makeImage(job: Prepared, cancel?: AbortSignal, onScene?: (scene: string) => void) {

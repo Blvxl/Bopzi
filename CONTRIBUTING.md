@@ -1,6 +1,8 @@
-# Contributing to Bopzi
+# Authorized contributions to Bopzi
 
-Thanks for helping improve Bopzi! Start with the setup instructions in [README.md](README.md). Windows is the primary development environment; platform-specific fixes and testing are welcome.
+Bopzi is a private proprietary project. Changes are accepted only from collaborators authorized by the owner under separate written terms. Public pull requests and unsolicited contributions are not accepted. Repository access by itself does not grant permission to use or redistribute the software.
+
+Windows is the primary development environment. See [README.md](README.md) for project setup and product context.
 
 ## Development
 
@@ -14,4 +16,4 @@ Next.js documentation bundled in `node_modules/next/dist/docs/` describes the ve
 
 Describe what you expected, what happened, the steps to reproduce it, your operating system and architecture, Node version, and any relevant logs. Remove credentials, private prompts, media and personal paths before sharing. For a suspected security issue, avoid publishing exploit details until a private reporting channel is available.
 
-Contributions are accepted under the project's [MIT License](LICENSE). Include provenance and licensing information for any new third-party assets or dependencies.
+Before work begins, agree in writing on contribution ownership and licensing with the owner. Include provenance and licensing information for any new third-party assets or dependencies. See [LICENSE](LICENSE) for the current proprietary notice; commercial access terms are set by the separate agreement, not this file.

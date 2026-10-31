@@ -91,3 +91,12 @@
   /* The logo already goes home, which leaves room for the account. */
   .app-sidebar > a[href="/"]:not(.app-sidebar-mark) { display:none; }
 }
+button.account-row { width:100%; cursor:pointer; font:inherit; }
+.account-leave { display:grid; gap:4px; padding:8px 10px; }
+.account-leave b { font-weight:600; }
+.account-leave p { color:#a8a39d; font-size:13px; }
+.account-leave .account-error { color:#ff9683; }
+.account-leave div { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.account-leave button { height:36px; border-radius:10px; background:#ffffff12; color:#f6f5f2; font:500 14px/1 var(--font-sans); cursor:pointer; }
+.account-leave button.is-go { background:#f6f5f2; color:#111110; }
+.account-leave button:disabled { opacity:.55; cursor:progress; }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import AppSidebar from '@/components/AppSidebar';
+import AuthGate from '@/components/AuthGate';
 import { inter, sora } from '@/lib/fonts';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
@@ -23,10 +24,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sora.variable} ${inter.variable}`}>
       <body>
         {/* One window: the sidebar switches between the tools, the page fills the rest. */}
-        <div className="app-shell">
-          <AppSidebar />
-          <div className="app-main">{children}</div>
-        </div>
+        <AuthGate>
+          <div className="app-shell">
+            <AppSidebar />
+            <div className="app-main">{children}</div>
+          </div>
+        </AuthGate>
       </body>
     </html>
   );

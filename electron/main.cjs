@@ -12,8 +12,12 @@ let serverExitCode = null;
 let mainWindow;
 let appUrl;
 let quitting = false;
+let serverOutput = '';
 
 app.setAppUserModelId('com.bopzi.studio');
+
+// An installed copy refuses debugging switches, which could reach into a signed-in session.
+if (isPackaged && process.argv.some(arg => /^--(remote-debugging|inspect)/.test(arg))) app.exit(1);
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -35,16 +39,20 @@ else {
   });
 }
 
-async function availablePort() {
+/** Projects are stored per address, so a changing port would hide them. The same port is used every launch when it is free. */
+const HOME_PORTS = [47721, 47722, 47723, 47724, 47725];
+async function isFree(port) {
   const server = net.createServer();
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, appUrlHost, resolve);
+  const free = await new Promise(resolve => {
+    server.once('error', () => resolve(false));
+    server.listen(port, appUrlHost, () => resolve(true));
   });
-  const address = server.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-  await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-  return port;
+  if (free) await new Promise(resolve => server.close(resolve));
+  return free;
+}
+async function availablePort() {
+  for (const port of HOME_PORTS) if (await isFree(port)) return port;
+  throw new Error('Bopzi could not find a free local port. Close other copies of Bopzi and try again.');
 }
 
 function startLocalServer(port) {
@@ -54,12 +62,15 @@ function startLocalServer(port) {
     HOSTNAME: appUrlHost,
     PORT: String(port),
     BOPZI_LOCAL_CHATGPT: '1',
+    BOPZI_DATA_DIR: app.getPath('userData'),
   };
 
   if (isPackaged) {
     const binDir = path.join(process.resourcesPath, 'bin');
     const ffmpeg = path.join(binDir, 'ffmpeg.exe');
     const ffprobe = path.join(binDir, 'ffprobe.exe');
+    const codex = path.join(binDir, 'codex.exe');
+    if (require('node:fs').existsSync(codex)) env.BOPZI_CODEX = codex;
     if (require('node:fs').existsSync(ffmpeg) && require('node:fs').existsSync(ffprobe)) {
       env.BOPZI_FFMPEG = ffmpeg;
       env.BOPZI_FFPROBE = ffprobe;
@@ -84,7 +95,9 @@ function startLocalServer(port) {
 async function waitForServer() {
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
-    if (!serverProcess || serverExitCode !== null) throw new Error('The Bopzi server stopped before it was ready.');
+    if (!serverProcess || serverExitCode !== null) throw new Error(`The Bopzi server stopped before it was ready.
+
+${serverOutput.slice(-1200)}`);
     try {
       const response = await fetch(appUrl, { signal: AbortSignal.timeout(1500) });
       if (response.ok) return;
@@ -99,7 +112,6 @@ async function startApp() {
   appUrl = `http://${appUrlHost}:${port}`;
   serverProcess = startLocalServer(port);
   serverExitCode = null;
-  let serverOutput = '';
   for (const stream of [serverProcess.stdout, serverProcess.stderr]) {
     stream?.on('data', chunk => { serverOutput = (serverOutput + chunk.toString()).slice(-5000); });
   }
@@ -119,10 +131,9 @@ function buildMenu() {
   const go = route => mainWindow?.loadURL(`${appUrl}${route}`);
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'File', submenu: [
-      { label: 'Home', accelerator: 'Alt+1', click: () => go('/') },
-      { label: 'Video editor', accelerator: 'Alt+2', click: () => go('/video') },
-      { label: 'Thumbnail studio', accelerator: 'Alt+3', click: () => go('/studio') },
-      { label: 'Projects', accelerator: 'Alt+4', click: () => go('/projects') },
+      { label: 'New thumbnail', accelerator: 'CmdOrCtrl+N', click: () => go('/studio') },
+      { label: 'New icon', click: () => go('/studio?format=icon') },
+      { label: 'Projects', accelerator: 'CmdOrCtrl+O', click: () => go('/projects') },
       { type: 'separator' },
       { role: 'quit' },
     ] },
@@ -131,11 +142,10 @@ function buildMenu() {
       { role: 'togglefullscreen' },
       { type: 'separator' },
       { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' },
-      { type: 'separator' },
-      { role: 'toggleDevTools' },
+      ...(isPackaged ? [] : [{ type: 'separator' }, { role: 'toggleDevTools' }]),
     ] },
     { label: 'Help', submenu: [
-      { label: 'About Bopzi', click: () => dialog.showMessageBox(mainWindow, { type: 'info', title: 'About Bopzi', message: 'Bopzi', detail: `Personal video and thumbnail studio · version ${app.getVersion()}` }) },
+      { label: 'About Bopzi', click: () => dialog.showMessageBox(mainWindow, { type: 'info', title: 'About Bopzi', message: 'Bopzi', detail: `Roblox thumbnail and icon studio · version ${app.getVersion()}` }) },
     ] },
   ]));
 }
@@ -147,7 +157,7 @@ function createWindow() {
     height: 980,
     minWidth: 1060,
     minHeight: 720,
-    backgroundColor: '#100e0c',
+    backgroundColor: '#111110',
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -164,7 +174,7 @@ function createWindow() {
     if (!url.startsWith(appUrl)) event.preventDefault();
   });
   mainWindow.on('closed', () => { mainWindow = null; });
-  mainWindow.loadURL(`${appUrl}/`);
+  mainWindow.loadURL(`${appUrl}/studio`);
 }
 
 function showStartupError(error) {

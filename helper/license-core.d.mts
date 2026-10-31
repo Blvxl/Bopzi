@@ -1,0 +1,10 @@
+export type License = { username: string; device: string; id: string };
+export function accountId(username: string): string;
+export function deviceCodeOf(fingerprint: string): string;
+export function usernameOf(value: unknown): string;
+export function publicKeyOf(privatePem: string): string;
+export function makeKey(input: { username: string; device: string; issuedAt?: number }, privatePem: string): License & { key: string };
+export function readKey(key: unknown, publicPem: string): License | null;
+export function keyFitsDevice(license: License | null, deviceCode: string): boolean;
+export function signList(disabled: string[], privatePem: string, at?: number): string;
+export function readList(text: string, publicPem: string, newerThan?: number): { disabled: string[]; at: number } | null;

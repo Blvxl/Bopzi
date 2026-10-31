@@ -57,6 +57,12 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
       </button>
     </span>
   );
+  const [opened, setOpened] = useState(false);
+  const signIn = async () => {
+    setOpened(true);
+    const done = await fetch('/api/thumbnail/session', { method: 'POST', headers: { 'content-type': 'application/json', 'x-bopzi-local': '1' }, body: JSON.stringify({ action: 'login' }) }).then((r) => r.json() as Promise<{ url?: string }>).catch(() => ({ url: '' }));
+    if (done.url) window.open(done.url, '_blank', 'noreferrer');
+  };
   const viaHelper = link.via === 'helper';
   const blocked = viaHelper && link.permission === 'denied';
   const codexReady = link.connected;
@@ -114,11 +120,11 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
     state: codexReady ? 'done' : codexKnown ? 'now' : 'later',
     body: (
       <>
-        {missing ? 'Install Codex from a terminal:' : 'Codex is the app that makes the images. Open a terminal and start it:'}
-        {missing && code('npm install -g @openai/codex')}
-        {missing && 'Then start it:'}
-        {code('codex')}
-        Choose <b>Sign in with ChatGPT</b>. This page notices when you are done.
+        {missing ? <>Install Codex from a terminal, then start it and choose <b>Sign in with ChatGPT</b>:{code('npm install -g @openai/codex')}{code('codex')}</> : <>
+          Sign in on OpenAI&apos;s page. Bopzi never sees your password.
+          <span className="cg-actions"><button type="button" className="cg-button" onClick={() => void signIn()}>Sign in with ChatGPT</button></span>
+          {opened && 'Finish in your browser. This list updates by itself.'}
+        </>}
       </>
     ),
   });

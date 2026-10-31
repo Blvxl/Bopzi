@@ -1,3 +1,4 @@
+import { hasAccess } from '@/lib/access';
 import { isLocalRequest, isSameOriginCall } from '@/lib/chatgpt/server';
 import { connectedAccount, connectionStatus, makeImage, prepareRefine, prepareThumbnail, type Prepared } from '@/lib/thumbnail/server';
 import { parseThumbnailBrief, parseThumbnailRefine } from '@/lib/thumbnail/prompt';
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!isLocalRequest(req)) return json({ error: 'This Bopzi cannot generate by itself. Connect your own ChatGPT plan with the Bopzi helper.' }, 403);
   if (!isSameOriginCall(req)) return json({ error: 'This request must come from Bopzi.' }, 403);
+  if (!(await hasAccess())) return json({ error: 'Sign in to Bopzi first.' }, 401);
   const status = await connectionStatus();
   if (!status.connected) return json({ error: status.reason, signInRequired: true }, 401);
   if (generating) return json({ error: 'An image is already being generated. Wait for it to finish.' }, 409);

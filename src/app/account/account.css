@@ -1,0 +1,32 @@
+/* Account settings, and the accounts an admin hands out. */
+.acc { width:min(100%,680px); min-height:calc(100dvh - var(--app-nav-h)); margin:0 auto; padding:clamp(40px,7vh,72px) 20px 64px; color:#f6f5f2; }
+.acc h1 { font:700 clamp(30px,3vw,38px)/1.1 var(--font-display); letter-spacing:-.035em; }
+.acc-who { margin-top:8px; color:#a8a39d; font-size:15px; }
+.acc-who b { color:#f6f5f2; font-weight:600; }
+.acc-card { display:grid; gap:12px; margin-top:24px; padding:20px; border:1px solid #ffffff1c; border-radius:16px; background:#1b1b1a; }
+.acc-card h2 { font-size:18px; font-weight:650; letter-spacing:-.015em; }
+.acc-card label { display:grid; gap:6px; color:#a8a39d; font-size:13px; }
+.acc-card input { width:100%; height:44px; padding:0 13px; border:1px solid #ffffff1c; border-radius:10px; outline:0; background:#111110; color:#f6f5f2; font:15px/1.4 var(--font-sans); }
+.acc-card input:focus { border-color:#ff704c; box-shadow:0 0 0 3px #ff704c30; }
+.acc-go { height:44px; padding:0 16px; border-radius:10px; background:#f6f5f2; color:#111110; font:600 14px/1 var(--font-sans); white-space:nowrap; cursor:pointer; }
+.acc-go:hover:not(:disabled) { background:#fff; }
+.acc-go:disabled { opacity:.45; cursor:not-allowed; }
+.acc-hint { color:#a8a39d; font-size:13px; }
+.acc-note { font-size:14px; }
+.acc-note.is-ok { color:#86c6a1; }
+.acc-note.is-bad { color:#ff9683; }
+.acc-add { display:flex; gap:8px; }
+.acc-shown { display:grid; gap:10px; padding:14px; border-radius:12px; background:#ffffff0a; font-size:14px; }
+.acc-shown code { padding:10px 12px; border-radius:8px; background:#111110; font:14px/1.4 var(--font-mono); overflow-wrap:anywhere; }
+.acc-shown button { display:flex; align-items:center; gap:7px; width:max-content; color:#f6f5f2; font-size:14px; cursor:pointer; }
+.acc-card ul { display:grid; list-style:none; }
+.acc-card li { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:12px 0; border-top:1px solid #ffffff14; }
+.acc-card li > span:first-child { display:grid; gap:1px; }
+.acc-card li b { font-weight:600; }
+.acc-card li small { color:#a8a39d; font-size:13px; }
+.acc-actions { display:flex; flex-wrap:wrap; gap:4px; }
+.acc-actions button { height:34px; padding:0 10px; border-radius:8px; color:#c9c4bd; font-size:13px; cursor:pointer; }
+.acc-actions button:hover { background:#ffffff12; color:#f6f5f2; }
+.acc-actions button.is-bad { color:#ff9683; }
+@media (max-width:520px) { .acc-add { flex-direction:column; } }
+.acc-form { display:grid; gap:10px; }

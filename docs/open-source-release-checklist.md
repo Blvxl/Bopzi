@@ -1,6 +1,6 @@
-# Open-source release checklist
+# Archived open-source release checklist
 
-Bopzi is being prepared for an MIT-licensed source release. This checklist records remaining work; it is not a claim that a public release has been audited.
+Archived notes from the earlier public MIT release. Bopzi is now private and proprietary; this checklist is historical only and is not approval to publish another source release. The current notice is in [LICENSE](../LICENSE). Previously granted MIT rights for earlier copies are not revoked.
 
 - [ ] Create a Git repository and inspect the exact staged file list and diffs before publishing. This working directory was not a Git repository during the initial preparation.
 - [ ] Review all included assets and their provenance, including demo/showcase images, fonts and sound files. Built-in sound credits appear in `src/video/sounds.ts`; verify the actual files and their terms. MIT covers Bopzi code, not automatically every dependency or asset.
