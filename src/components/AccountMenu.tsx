@@ -4,16 +4,21 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { HELP_TEXT } from '@/lib/site';
 import { HOSTED_ACCOUNTS } from '@/lib/supabase/config';
+import { findLink } from '@/studio/imageRoute';
 import { currentAdmin, currentUser, logOut } from './AuthGate';
 import UpdateButton from './UpdateButton';
 
 type Account = { name: string; email: string; plan: string };
-type Status = { connected: boolean; reason?: string; account?: Account | null };
+type Status = { connected: boolean; reason?: string; account?: Account | null; helper?: boolean };
 
 /** Asked once a page, however many bars show the button; opening the menu asks again. */
 let asked: Promise<Status> | null = null;
 const status = (fresh = false) => {
-  if (!asked || fresh) asked = fetch('/api/thumbnail', { cache: 'no-store' }).then((r) => r.json() as Promise<Status>).catch(() => ({ connected: false }));
+  // On the website the connection runs through the helper on the visitor's computer, so the site's own answer is not enough.
+  if (!asked || fresh) asked = findLink().then(async (link): Promise<Status> => {
+    if (link.via === 'helper') return { connected: link.connected, reason: link.reason, account: null, helper: true };
+    return fetch('/api/thumbnail', { cache: 'no-store' }).then((r) => r.json() as Promise<Status>);
+  }).catch(() => ({ connected: false }));
   return asked;
 };
 
@@ -41,6 +46,11 @@ export default function AccountMenu() {
 
   // A remembered "not connected" may be from before signing in, so it is asked again.
   useEffect(() => { let alive = true; void status().then((s) => (s.connected ? s : status(true))).then((s) => { if (alive) setState(s); }); return () => { alive = false; }; }, []);
+  useEffect(() => {
+    if (!state || state.connected) return;
+    const timer = setInterval(() => { void status(true).then((s) => setState(s)); }, 5000);
+    return () => clearInterval(timer);
+  }, [state]);
   useEffect(() => {
     if (!open) return;
     let alive = true;
@@ -102,7 +112,11 @@ export default function AccountMenu() {
           <p className="account-foot">{free ? 'AI images need a paid plan. Manual tools still work.' : 'Images count against this plan.'}</p>
           <hr />
           {bopziAccount}
-        </> : state && !state.connected ? <div className="account-off">
+        </> : state?.connected && state.helper ? <div className="account-off">
+          <b>ChatGPT connected</b>
+          <p>Images are made by the Bopzi helper on your computer, on your own plan. Close the helper window to disconnect.</p>
+          {bopziAccount}
+        </div> : state && !state.connected ? <div className="account-off">
           <b>Not connected</b>
           <p>{state.reason || 'No ChatGPT plan is connected.'}</p>
           <a href="/studio?connect=1" onClick={setup}>Connect ChatGPT</a>
