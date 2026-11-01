@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
     "start:web": "next start",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "desktop": "electron .",
     "desktop:prepare": "node scripts/prepare-desktop.mjs",
     "desktop:package": "node scripts/prepare-desktop.mjs --arm64 && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
@@ -32,6 +34,7 @@
     "simple-icons": "16.35.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.15",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.3.0",
@@ -40,7 +43,8 @@
     "electron-builder": "^26.18.0",
     "png-to-ico": "^3.0.2",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "wrangler": "^4.156.0"
   },
   "main": "electron/main.cjs"
 }

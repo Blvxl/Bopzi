@@ -32,3 +32,5 @@ accounts.json.tmp
 *.pem
 licenses.json
 license.json
+.open-next
+.wrangler
