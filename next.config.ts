@@ -16,7 +16,8 @@ const csp = [
   "font-src 'self' data:",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  `connect-src 'self' http://127.0.0.1:47615 http://localhost:47615 ${supabase} https://huggingface.co https://*.huggingface.co https://*.hf.co https://cdn.jsdelivr.net ${ads}${dev ? ' ws: wss:' : ''}`,
+  // data: and blob: are the page's own pictures turned into files; neither can reach another website.
+  `connect-src 'self' data: blob: http://127.0.0.1:47615 http://localhost:47615 ${supabase} https://huggingface.co https://*.huggingface.co https://*.hf.co https://cdn.jsdelivr.net ${ads}${dev ? ' ws: wss:' : ''}`,
   "worker-src 'self' blob:",
   `frame-src ${ads}`,
   "object-src 'none'",

@@ -1,7 +1,9 @@
 import type { AssetRecord, Project } from './types';
+import { HOSTED_ACCOUNTS } from './supabase/config';
 import { uid } from './util';
 
-// Everything Bopzi saves lives on this computer's disk, through /api/library.
+// On the website everything Bopzi saves lives in this browser (IndexedDB). On a creator's own computer it lives on disk, through /api/library.
+const IN_BROWSER = HOSTED_ACCOUNTS;
 type Store = 'projects' | 'assets' | 'attachments';
 type Call = { op: 'get' | 'list' | 'put' | 'delete'; store: Store; key?: string; group?: string; value?: unknown; onlyIfNew?: boolean };
 
@@ -36,8 +38,45 @@ function unpack(value: unknown): unknown {
   return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, unpack(v)]));
 }
 
-const get = async <T>(store: Store, key: string) => (unpack(await call({ op: 'get', store, key })) ?? undefined) as T | undefined;
-const list = async <T>(store: Store, group?: string) => unpack(await call({ op: 'list', store, group })) as T[];
+// The browser's own database. It keeps images as they are, so nothing is packed into text.
+const DB_NAME = 'bopzi';
+const DB_VERSION = 3;
+let dbPromise: Promise<IDBDatabase> | null = null;
+function openDb() {
+  if (!dbPromise) {
+    dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        const has = (name: string) => db.objectStoreNames.contains(name);
+        if (!has('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+        if (!has('assets')) db.createObjectStore('assets', { keyPath: 'id' }).createIndex('projectId', 'projectId');
+        if (!has('attachments')) db.createObjectStore('attachments', { keyPath: 'projectId' });
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        // When a newer Bopzi tab needs to upgrade the database, let go of it so that tab is not left waiting.
+        db.onversionchange = () => { db.close(); dbPromise = null; };
+        resolve(db);
+      };
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('Another Bopzi tab is blocking storage. Close your other Bopzi tabs, then try again.'));
+    });
+    dbPromise.catch(() => (dbPromise = null));
+  }
+  return dbPromise;
+}
+const wrap = <T,>(req: IDBRequest<T>) => new Promise<T>((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+const table = async (name: Store, mode: IDBTransactionMode = 'readonly') => (await openDb()).transaction(name, mode).objectStore(name);
+
+const get = async <T>(store: Store, key: string) => {
+  if (IN_BROWSER) return (await wrap<T | undefined>((await table(store)).get(key))) ?? undefined;
+  return (unpack(await call({ op: 'get', store, key })) ?? undefined) as T | undefined;
+};
+const list = async <T>(store: Store, group?: string) => {
+  if (IN_BROWSER) return wrap<T[]>(group ? (await table(store)).index('projectId').getAll(group) : (await table(store)).getAll());
+  return unpack(await call({ op: 'list', store, group })) as T[];
+};
 /** One save at a time, in order, so an older autosave can never land on top of a newer one. */
 let saving: Promise<unknown> = Promise.resolve();
 const inOrder = <T>(job: () => Promise<T>) => {
@@ -46,10 +85,19 @@ const inOrder = <T>(job: () => Promise<T>) => {
   return next;
 };
 const put = async (store: Store, key: string, value: unknown, group?: string, onlyIfNew?: boolean) => {
+  if (IN_BROWSER) {
+    const rows = await table(store, 'readwrite');
+    if (onlyIfNew && (await wrap(rows.count(key))) > 0) return;
+    await wrap(rows.put(value));
+    return;
+  }
   const packed = await pack(value);
   await inOrder(() => call({ op: 'put', store, key, value: packed, group, onlyIfNew }));
 };
-const remove = (store: Store, key: string) => inOrder(() => call({ op: 'delete', store, key }));
+const remove = (store: Store, key: string) => inOrder(async () => {
+  if (IN_BROWSER) { await wrap((await table(store, 'readwrite')).delete(key)); return; }
+  return call({ op: 'delete', store, key });
+});
 
 /** Set when someone signs in. Projects live in one database, so each is marked with its owner. */
 let owner = '';
@@ -164,6 +212,7 @@ export async function duplicateProject(id: string) {
 
 /** Copies anything still in the browser's old storage onto disk, once. The old copy stays where it is. */
 async function importBrowserProjects() {
+  if (IN_BROWSER) return; // the browser's own storage is already where the website keeps everything
   const DONE = 'bopzi-projects-on-disk';
   try { if (localStorage.getItem(DONE)) return; } catch { /* no local storage: the copy just runs again, and skips what's there */ }
   if (!(await indexedDB.databases()).some((d) => d.name === 'bopzi')) return;
