@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { SITE_DESCRIPTION, DONATE_URL } from '@/lib/site';
+import { DONATE_URL, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 import AdSlot from '@/components/AdSlot';
 import './home.css';
 import HomeShowcase from './HomeShowcase';
@@ -10,6 +10,18 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   alternates: { canonical: '/' },
 };
+
+// Tells search engines what Bopzi is. The text is fixed, and "<" is escaped so it can never close the tag.
+const STRUCTURED = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Bopzi',
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: 'DesignApplication',
+  operatingSystem: 'Any (web browser)',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+}).replace(/</g, String.fromCharCode(92) + 'u003c');
 
 const FAQ = [
   { q: 'Do I install anything?', a: 'The editor runs in your browser, nothing to install. AI images currently use a small helper that runs on your computer and connects your own ChatGPT plan.' },
@@ -21,6 +33,7 @@ const FAQ = [
 
 export default function Home() {
   return <div className="home"><main>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: STRUCTURED }} />
     <HomeShowcase />
 
     <section className="home-faq" aria-labelledby="faq-title">

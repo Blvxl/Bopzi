@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   openGraph: { title: 'Bopzi · Roblox thumbnail maker', description: SITE_DESCRIPTION, siteName: SITE_NAME, type: 'website' },
+  twitter: { card: 'summary_large_image', title: 'Bopzi · Roblox thumbnail maker', description: SITE_DESCRIPTION },
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'black-translucent' },
   icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }], apple: '/icons/apple-touch-icon.png' },
 };
