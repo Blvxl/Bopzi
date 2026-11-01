@@ -19,11 +19,15 @@ export async function prepareThumbnail(brief: ThumbnailBrief): Promise<Prepared>
   let measuredStyle: string | undefined;
   if (styleImage) {
     images.push(styleImage);
-    measuredStyle = await styleNotes(styleImage);
+    // Measuring and drawing need the image library, which some hosts (Cloudflare) cannot run. Without it the
+    // request simply goes without the measured look and the pose guide, and the prompt stops mentioning them.
+    measuredStyle = await styleNotes(styleImage).catch(() => undefined);
   }
   const pose = posePick(brief);
-  if (pose) images.push(await poseGuide(pose));
-  return { prompt: thumbnailPrompt(brief, measuredStyle), images, shape: brief.icon ? 'square' : 'wide' };
+  const guide = pose ? await poseGuide(pose).catch(() => null) : null;
+  if (guide) images.push(guide);
+  const effective = pose && !guide ? { ...brief, pose: 'none' } : brief;
+  return { prompt: thumbnailPrompt(effective, measuredStyle), images, shape: brief.icon ? 'square' : 'wide' };
 }
 
 /** Changes one thing in an existing result. The current image is the only input, so the composition carries over. */
