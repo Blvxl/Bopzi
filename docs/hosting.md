@@ -27,6 +27,8 @@ Cloudflare runs Next.js through the OpenNext adapter (`wrangler.jsonc`, `open-ne
 4. The address is `bopzi.<your-subdomain>.workers.dev`. Set `NEXT_PUBLIC_SITE_URL` to it, rebuild, and add it to Supabase (step 1.3). Add your own domain under Settings, Domains and routes.
 5. Rate limiting: in Cloudflare, Security, WAF, Rate limiting rules, add a rule for `/api/*`. The built-in limits only count per running copy, and Workers can run many copies.
 
+The build leaves out files over 24 MiB (`scripts/trim-cf-assets.mjs`): Cloudflare allows 25 MiB per file, and the background remover's runtime copy is bigger than that. It loads that file from jsDelivr instead, so only the unused copy is dropped.
+
 **Free plan size limit.** One source lists 3 MiB (compressed) for the free plan and 10 MiB for the paid one. If the deploy stops with a "too large" error, the free plan is not enough. I could not measure the size here. The adapter also calls its support for `proxy.ts` (the file that keeps logins fresh) experimental, so test sign-up, log-in and log-out after the first deploy.
 
 ## 4. Before opening to everyone
