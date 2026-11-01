@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   openGraph: { title: 'Bopzi · Roblox thumbnail maker', description: SITE_DESCRIPTION, siteName: SITE_NAME, type: 'website' },
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'black-translucent' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }], apple: '/icons/apple-touch-icon.png' },
 };
 
 export const viewport: Viewport = { themeColor: '#111214' };
