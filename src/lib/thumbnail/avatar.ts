@@ -1,4 +1,5 @@
 import { imageMime, isRobloxImageUrl } from './references';
+import { fetchImage } from './fetch-image';
 
 /**
  * A real avatar gives the image model something authentic to redraw, instead of inventing a cartoon lookalike.
@@ -54,12 +55,12 @@ export async function avatarReference(who: { username?: string; userId?: number 
   }
   if (!imageUrl) throw new Error('Roblox is still rendering that avatar. Try again in a few seconds.');
 
-  const image = await fetch(imageUrl, { redirect: 'error', signal: AbortSignal.timeout(15000) });
+  const image = await fetchImage(imageUrl, AbortSignal.timeout(15000));
   if (!image.ok) throw new Error('The avatar image could not be downloaded.');
   const bytes = Buffer.from(await image.arrayBuffer());
   if (bytes.length > 8_000_000) throw new Error('The avatar image is too large.');
   imageMime(bytes); // throws if Roblox sent something that is not an image
-  return { name: user.name, data: `data:image/png;base64,${(await cropToFigure(bytes)).toString('base64')}` };
+  return { name: user.name, data: `data:image/png;base64,${(await cropToFigure(bytes).catch(() => bytes)).toString('base64')}` };
 }
 
 /** Roblox pads the render with a lot of empty space. Cropping to the figure gives the model more avatar to look at. */

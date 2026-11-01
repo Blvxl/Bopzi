@@ -1,3 +1,5 @@
+import { fetchImage } from './fetch-image';
+
 export type ReferenceGame = {
   id: number;
   name: string;
@@ -83,7 +85,7 @@ export async function referenceCatalog(): Promise<Catalog> {
 export async function styleReferenceImage(id: number): Promise<string> {
   const game = await gameById(id);
   if (!game) throw new Error('That reference is unavailable. Choose another one.');
-  const response = await fetch(game.imageUrl, { redirect: 'error', signal: AbortSignal.timeout(15000) });
+  const response = await fetchImage(game.imageUrl, AbortSignal.timeout(15000));
   if (!response.ok) throw new Error('Could not load the style reference. Try another one.');
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length > 8_000_000) throw new Error('The style reference is too large.');
@@ -216,14 +218,16 @@ export async function arrangementReferences(query: string, signal: AbortSignal):
     const url = body.data?.find(g => g.universeId === game.id)?.thumbnails?.filter(t => t.state === 'Completed' && isRobloxImageUrl(t.imageUrl))[i]?.imageUrl;
     if (url && !candidates.some(c => c.url === url)) candidates.push({ game, url });
   }
-  const sharp = (await import('sharp')).default;
+  // Some hosts (Cloudflare) cannot run sharp; the images are then used as they come, without the widescreen check.
+  const sharp = await import('sharp').then((m) => m.default).catch(() => null);
   const { createHash } = await import('node:crypto');
   const fetched = await Promise.allSettled(candidates.slice(0, 10).map(async ({ game, url }) => {
-    const response = await fetch(url, { redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]) });
+    const response = await fetchImage(url, AbortSignal.any([signal, AbortSignal.timeout(15000)]));
     if (!response.ok) throw new Error('Unavailable image');
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.length > 8_000_000) throw new Error('Oversized image');
-    imageMime(bytes);
+    const mime = imageMime(bytes);
+    if (!sharp) return { name: game.name, sourceUrl: game.sourceUrl, imageUrl: url, image: `data:${mime};base64,${bytes.toString('base64')}`, hash: createHash('sha256').update(bytes).digest('hex') };
     const metadata = await sharp(bytes, { limitInputPixels: 20_000_000 }).metadata();
     const ratio = (metadata.width ?? 0) / (metadata.height ?? 1);
     if (ratio < 1.6 || ratio > 1.95) throw new Error('Not a widescreen thumbnail');
