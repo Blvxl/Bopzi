@@ -26,8 +26,8 @@ const csp = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
-  // Bundle the local production server with the Windows desktop app.
-  output: 'standalone',
+  // Bundle the local production server with the Windows desktop app. The website host sets BOPZI_WEB and runs `next start`.
+  output: process.env.BOPZI_WEB ? undefined : 'standalone',
   // These workspace folders are not used by the running app. Excluding them keeps the desktop package lean.
   outputFileTracingExcludes: {
     '/*': ['./artifacts/**/*', './assets/**/*', './backups/**/*', './build/**/*', './docs/**/*', './release/**/*', './reports/**/*', './research_notes/**/*', './src/**/*', './tests/**/*'],
