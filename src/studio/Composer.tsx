@@ -846,9 +846,14 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
     </div>
 
     {/* Said only when it needs the user: a connected plan is the normal case. */}
-    {connection && !connection.connected && <p className="composer-status">
-      <i/>{connection.reason || 'Connect Codex before generating.'}<button type="button" className="composer-setup" onClick={() => setGuideOpen(true)}>Connect Codex</button><button type="button" onClick={() => void check()} aria-label="Check the connection again"><RefreshCw size={12}/></button>
-    </p>}
+    {connection && !connection.connected && <div className="composer-status" role="status" aria-live="polite">
+      <span className="composer-status-indicator" aria-hidden="true"/>
+      <span className="composer-status-copy"><strong>AI images</strong><span>{connection.reason || 'Connect your own ChatGPT plan to generate here.'}</span></span>
+      <span className="composer-status-actions">
+        <button type="button" className="composer-setup" onClick={() => setGuideOpen(true)}>Set up AI</button>
+        <button type="button" className="composer-refresh" onClick={() => void check()} aria-label="Check the connection again" title="Check connection"><RefreshCw size={15}/></button>
+      </span>
+    </div>}
 
     {s.previewOpen && !asIcon && <RobloxPreview name={s.projectName} start={previewStart} icon={icon} iconUrl={iconUrl} onIcon={setIcon} generating={iconBusy} error={iconError} onGenerate={() => void generateIcon()} onCancel={() => iconAbort.current?.abort()} games={catalog.games} snapshot={s.snapshot} blocked={iconBlocked} notify={s.notify} onClose={() => { s.setPreviewOpen(false); setPreviewStart('home'); }}/>}
     {guideOpen && connection && <ConnectGuide link={connection} onCheck={check} onClose={() => setGuideOpen(false)}/>}
