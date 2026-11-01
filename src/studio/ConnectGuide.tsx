@@ -88,7 +88,7 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
           </a>
           .
           <span className="cg-actions">
-            <a className="cg-button" href="/api/helper" download="bopzi-helper.mjs">
+            <a className="cg-button" href="/bopzi-helper.mjs" download="bopzi-helper.mjs">
               <Download size={14} /> Download the helper
             </a>
           </span>

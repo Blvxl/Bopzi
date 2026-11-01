@@ -19,8 +19,9 @@ test('old requests stop counting', async () => {
   await new Promise((r) => setTimeout(r, 50));
   assert.equal(tooMany('d', 3, 30), false);
 });
-test('the caller is the first forwarded address', async () => {
+test('the caller is the address Cloudflare reports, never a forwarded header', async () => {
   const { callerOf } = await load();
-  assert.equal(callerOf(new Request('http://x', { headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8' } })), '1.2.3.4');
+  assert.equal(callerOf(new Request('http://x', { headers: { 'cf-connecting-ip': '1.2.3.4', 'x-forwarded-for': '9.9.9.9' } })), '1.2.3.4');
+  assert.equal(callerOf(new Request('http://x', { headers: { 'x-forwarded-for': '9.9.9.9' } })), 'unknown');
   assert.equal(callerOf(new Request('http://x')), 'unknown');
 });

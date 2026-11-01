@@ -13,5 +13,8 @@ export function tooMany(key: string, max: number, windowMs: number) {
   return recent.length > max;
 }
 
-/** Who is calling: the address the host reports, or one shared bucket when there is none. */
-export const callerOf = (req: Request) => (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
+/**
+ * Who is calling. Cloudflare sets cf-connecting-ip itself, so it cannot be faked by the caller; x-forwarded-for
+ * can be, so it is never used. Anywhere else (a laptop, an unknown host) everyone shares one bucket.
+ */
+export const callerOf = (req: Request) => (req.headers.get('cf-connecting-ip') ?? '').trim() || 'unknown';

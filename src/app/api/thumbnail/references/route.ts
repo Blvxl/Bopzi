@@ -1,9 +1,11 @@
 import { gameById, gameByPlace, referenceCatalog, searchGames } from '@/lib/thumbnail/references';
+import { callerOf, tooMany } from '@/lib/rate-limit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // No parameters: the curated list. `?q=` searches all of Roblox. `?id=` resolves one saved pick, `?place=` a pasted game link.
 export async function GET(req: Request) {
+  if (tooMany(`references:${callerOf(req)}`, 60, 60_000)) return Response.json({ error: 'Too many requests. Wait a minute.' }, { status: 429 });
   const params = new URL(req.url).searchParams;
   const q = params.get('q');
   const id = params.get('id');

@@ -6,6 +6,9 @@ import { HELP_TEXT } from '@/lib/site';
 import { Lockup } from './Logo';
 import './auth.css';
 
+/** Set to 1 once Google is switched on in Supabase; until then the button would only fail. */
+const GOOGLE_SIGNIN = process.env.NEXT_PUBLIC_GOOGLE_SIGNIN === '1';
+
 /** Free accounts: e-mail and password, or Google. Supabase keeps the passwords; Bopzi never sees them stored. */
 export default function AccountForm({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<'in' | 'up' | 'reset'>('in');
@@ -49,7 +52,7 @@ export default function AccountForm({ onDone }: { onDone: () => void }) {
       <label>E-mail<input type="email" required autoFocus autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} /></label>
       {mode !== 'reset' && <label>Password<input type="password" required minLength={8} maxLength={128} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} /></label>}
       <button type="submit" className="auth-go" disabled={busy || !email.trim() || (mode !== 'reset' && password.length < 8)}>{busy ? 'One moment' : mode === 'up' ? 'Create account' : mode === 'reset' ? 'Send link' : 'Log in'}</button>
-      {mode !== 'reset' && <button type="button" className="auth-alt" onClick={() => void google()}>Continue with Google</button>}
+      {mode !== 'reset' && GOOGLE_SIGNIN && <button type="button" className="auth-alt" onClick={() => void google()}>Continue with Google</button>}
       {message && <p className="auth-error" role="status">{message}</p>}
       <p className="auth-switch">
         {mode === 'in' && <><button type="button" onClick={() => { setMode('up'); setMessage(''); }}>Create an account</button><button type="button" onClick={() => { setMode('reset'); setMessage(''); }}>Forgot password?</button></>}
