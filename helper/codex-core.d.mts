@@ -6,4 +6,7 @@ export function codexSignOut(): Promise<void>;
 export function codexAccount(): Promise<{ id: string; name: string; email: string; plan: string } | null>;
 export function codexPicture(): Promise<{ type: string; bytes: Uint8Array<ArrayBuffer> } | null>;
 export function codexAsk(job: { question: string; images?: string[]; signal?: AbortSignal; timeoutMs?: number; model?: string; effort?: string }): Promise<string>;
+export const IMAGE_MODELS: string[];
+export function modelRefused(status: number, detail?: unknown): boolean;
+export function imageFailure(status: number, detail?: unknown): string;
 export function codexImage(job: { prompt: string; images?: string[]; look?: string[]; notes?: string; shape?: 'wide' | 'square'; model?: string; signal?: AbortSignal; timeoutMs?: number; onScene?: (scene: string) => void }): Promise<{ image: string; notes: string }>;

@@ -9,10 +9,10 @@ import './shell.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: SITE_NAME, template: '%s · Bopzi' },
+  title: { default: 'Bopzi · Roblox thumbnail maker', template: '%s · Bopzi' },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
-  robots: { index: false, follow: false },
+  openGraph: { title: 'Bopzi · Roblox thumbnail maker', description: SITE_DESCRIPTION, siteName: SITE_NAME, type: 'website' },
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'black-translucent' },
   icons: { apple: '/icons/apple-touch-icon.png' },
 };

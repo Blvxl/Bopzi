@@ -4,13 +4,17 @@ import { Check, Copy } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { claimProjects, setOwner } from '@/lib/db';
+import { HELP_TEXT } from '@/lib/site';
+import { HOSTED_ACCOUNTS } from '@/lib/supabase/config';
+import { supabaseBrowser } from '@/lib/supabase/browser';
+import AccountForm from './AccountForm';
 import { Lockup } from './Logo';
 import './auth.css';
 
 type Access = { required: boolean; signedIn: boolean; username?: string; id?: string; admin?: boolean; reason?: string; deviceCode?: string };
 
 /** Pages anyone may read: the license and the privacy notes. */
-const OPEN = ['/license', '/about'];
+const OPEN = ['/license', '/about', '/pricing'];
 const post = (body: object) => fetch('/api/access', { method: 'POST', headers: { 'content-type': 'application/json', 'x-bopzi-local': '1' }, body: JSON.stringify(body) }).then((r) => r.json() as Promise<Access & { error?: string }>);
 
 /** Who is signed in, for the account menu. */
@@ -19,7 +23,8 @@ export let currentUser = '';
 export let currentAdmin = false;
 
 export const logOut = async () => {
-  await post({ action: 'logout' }).catch(() => undefined);
+  if (HOSTED_ACCOUNTS) await supabaseBrowser().auth.signOut().catch(() => undefined);
+  else await post({ action: 'logout' }).catch(() => undefined);
   currentUser = '';
   currentAdmin = false;
   window.location.assign('/');
@@ -28,7 +33,7 @@ export const logOut = async () => {
 /** Nothing in Bopzi opens without a license key made for this computer. */
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const path = usePathname() ?? '/';
-  const open = OPEN.some((p) => path.startsWith(p));
+  const open = path === '/' || OPEN.some((p) => path.startsWith(p));
   const [state, setState] = useState<'checking' | 'out' | 'in'>('checking');
   const [key, setKey] = useState('');
   const [device, setDevice] = useState('');
@@ -40,7 +45,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setOwner(id);
     currentUser = name;
     currentAdmin = admin;
-    await claimProjects().catch(() => { /* the projects stay as they were and are offered again next time */ });
+    await claimProjects(admin).catch(() => { /* the projects stay as they were and are offered again next time */ });
     setState('in');
   }, []);
   const leave = useCallback((reason = '') => {
@@ -80,14 +85,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (open || state === 'in') return children;
   return (
     <main className="auth">
-      {state === 'out' && <form className="auth-card" aria-labelledby="auth-title" onSubmit={(e) => void submit(e)}>
+      {state === 'out' && HOSTED_ACCOUNTS && <AccountForm onDone={() => void check()} />}
+      {state === 'out' && !HOSTED_ACCOUNTS && <form className="auth-card" aria-labelledby="auth-title" onSubmit={(e) => void submit(e)}>
         <Lockup size={34} bg="#191816" className="auth-brand" />
-        <h1 id="auth-title">Activate Bopzi</h1>
-        <p>Send your device code to get a license key for this computer.</p>
+        <h1 id="auth-title">Log in to Bopzi</h1>
+        <p>Paste your license key. New here? Send your device code to get one.</p>
         <div className="auth-device"><span>Device code</span><code>{device}</code><button type="button" aria-label="Copy device code" onClick={() => void copy()}>{copied ? <Check size={15} /> : <Copy size={15} />}</button></div>
         <label>License key<textarea required autoFocus spellCheck={false} rows={3} maxLength={1000} value={key} onChange={(e) => setKey(e.target.value)} /></label>
-        <button type="submit" className="auth-go" disabled={busy || !key.trim()}>{busy ? 'Activating' : 'Activate'}</button>
+        <button type="submit" className="auth-go" disabled={busy || !key.trim()}>{busy ? 'Logging in' : 'Log in'}</button>
         {message && <p className="auth-error" role="alert">{message}</p>}
+        <p className="auth-help">Need help? {HELP_TEXT}.</p>
       </form>}
     </main>
   );

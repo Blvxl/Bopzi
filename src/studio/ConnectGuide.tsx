@@ -141,6 +141,9 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
             <X size={16} />
           </button>
         </header>
+        <p className="cg-warning">
+          <b>Experimental and unofficial.</b> This is not an OpenAI-approved way to make images. It can stop working at any time, and OpenAI could limit or suspend your ChatGPT account. Use it at your own risk.
+        </p>
         <ol>
           {steps.map((step, i) => (
             <li key={step.title} className={`is-${step.state}`}>

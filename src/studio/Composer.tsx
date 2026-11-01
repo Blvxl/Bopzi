@@ -1,11 +1,11 @@
 'use client';
-import { ArrowUp, BookImage, Check, ChevronDown, History, Columns2, Download, ImagePlus, Plus, SquareDashedMousePointer, RefreshCw, SlidersHorizontal, LayoutTemplate, Palette, UserRound, X } from 'lucide-react';
+import { ArrowUp, BookImage, Check, ChevronDown, History, Columns2, Download, ImagePlus, Plus, SquareDashedMousePointer, RefreshCw, SlidersHorizontal, Palette, UserRound, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCEPT_ATTR, loadAsset, useAsset } from '@/lib/assets';
 import { deleteIcon, getAttachments, getIcon, putAttachments, putIcon } from '@/lib/db';
 import { downloadBlob } from '@/lib/util';
-import { autoArea } from '@/lib/thumbnail/prompt';
+import { autoArea, boxHoldsChange } from '@/lib/thumbnail/prompt';
 import type { ReferenceGame } from '@/lib/thumbnail/references';
 import type { ImageLayer } from '@/lib/types';
 import { useStudio, type Region, type TakeSlot } from './context';
@@ -119,6 +119,20 @@ async function keepOutside(previous: Blob, changed: HTMLCanvasElement, region: R
   ctx.save(); ctx.beginPath(); ctx.rect(region.x * W, region.y * H, region.w * W, region.h * H); ctx.clip();
   ctx.drawImage(mask, 0, 0); ctx.restore();
   return out;
+}
+
+/** Whether a change stayed inside a box the AI chose, so the rest can safely come from the old image. */
+async function stayedInside(previous: Blob, changed: HTMLCanvasElement, region: Region) {
+  const W = 160, H = 90;
+  const pixels = (source: CanvasImageSource) => {
+    const small = document.createElement('canvas'); small.width = W; small.height = H;
+    const ctx = small.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(source, 0, 0, W, H);
+    return ctx.getImageData(0, 0, W, H).data;
+  };
+  const old = await createImageBitmap(previous);
+  const before = pixels(old); old.close();
+  return boxHoldsChange(before, pixels(changed), W, H, region);
 }
 
 function CompareTile({ layer, index, onPick }: { layer: ImageLayer; index: number; onPick: () => void }) {
@@ -390,19 +404,21 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
       const made = await artwork(image);
       const canvas = polish && !asIcon ? finish(made) : made;
       // With an area, everything outside it is taken from the image as it was, so it cannot drift.
-      const final = await pngOf(within && area ? await keepOutside(within.previous, canvas, area) : canvas);
+      // An area the user marked always holds. One the AI chose holds only if the pixels agree.
+      const keep = within && area && (within.region || await stayedInside(within.previous, canvas, area));
+      const final = await pngOf(keep ? await keepOutside(within.previous, canvas, area!) : canvas);
       // From here the image exists. If the browser cannot store it, hand it over as a file; never ask for it twice.
       const place = async (): Promise<boolean> => {
         try {
           await Promise.race([
             s.addGenerated(new File([final], `${CONCEPT}.png`, { type: 'image/png' }), replaceId, undefined, edit),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Saving the image in this browser took too long.')), 20000)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Saving the image on this computer took too long.')), 20000)),
           ]);
           s.setGeneration({ phase: 'ready', startedAt, tint });
           return true;
         } catch (e) {
           downloadBlob(final, 'bopzi-thumbnail.png');
-          const why = e instanceof Error ? e.message : 'The image could not be saved in this browser.';
+          const why = e instanceof Error ? e.message : 'The image could not be saved on this computer.';
           const message = `${why} The image was downloaded so it is not lost.`;
           s.setGeneration({ phase: 'failed', startedAt, message, retry: () => { s.setGeneration({ phase: 'placing', startedAt, tint }); void place(); } });
           if (mounted.current) setError(message);
@@ -453,7 +469,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
           // From here the image exists. If the browser cannot store it, hand it over as a file rather than lose it.
           const id = await s.addGenerated(new File([png], `${CONCEPT}.png`, { type: 'image/png' })).catch((e: unknown) => {
             downloadBlob(png, `bopzi-image-${i + 1}.png`);
-            throw new Error(`${e instanceof Error ? e.message : 'It could not be saved in this browser.'} It was downloaded instead.`);
+            throw new Error(`${e instanceof Error ? e.message : 'It could not be saved on this computer.'} It was downloaded instead.`);
           });
           patch(i, { status: 'ready', id });
         } catch (e) {
@@ -485,7 +501,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
   }, [icon]);
   const setIcon = (blob: Blob | null) => {
     setIconState(blob);
-    (blob ? putIcon(s.projectId, blob) : deleteIcon(s.projectId)).catch(() => { if (blob) s.notify('The icon could not be saved in this browser. Download it from Preview to keep it.', 'warn'); });
+    (blob ? putIcon(s.projectId, blob) : deleteIcon(s.projectId)).catch(() => { if (blob) s.notify('The icon could not be saved on this computer. Download it from Preview to keep it.', 'warn'); });
   };
   // Runs here, not in the preview, so closing the preview does not cancel it.
   const generateIcon = async () => {
@@ -529,8 +545,8 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
     const region = s.region ?? undefined;
     try {
       const asset = await loadAsset(current.assetId);
-      if (!asset) throw new Error('The current thumbnail is no longer in this browser. Generate a new one.');
-      const done = await run({ refine: { image: await fileData(asset.record.blob), instruction, region, icon: asIcon } }, undefined, current.id, { previous: asset.record.blob, region }, { instruction, parentId: current.id, area: !!region });
+      if (!asset) throw new Error('The current thumbnail is no longer on this computer. Generate a new one.');
+      const done = await run({ refine: { image: await fileData(asset.record.blob), instruction, region, icon: asIcon, references: references.map(r => ({ data: r.data, label: r.label })) } }, undefined, current.id, { previous: asset.record.blob, region }, { instruction, parentId: current.id, area: !!region });
       if (done && mounted.current) { setChange(''); s.setRegion(null); field.current?.focus(); }
     } catch (e) {
       if (mounted.current) setError(e instanceof Error ? e.message : 'The edit could not be prepared.');
@@ -673,8 +689,6 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
   </form>;
   const hasArt = s.doc.layers.length > 0;
   const hasAvatar = references.some(r => r.label === 'My avatar');
-  /** A format is its own project, so changing it starts one and carries the idea across. */
-  const formatHref = (icon: boolean) => { const q = new URLSearchParams(); if (icon) q.set('format', 'icon'); if (s.prompt.idea.trim()) q.set('idea', s.prompt.idea); const text = q.toString(); return '/studio' + (text ? '?' + text : ''); };
 
   return <div className="composer-zone">
     {screenshotOpen && <ImproveScreenshot onImport={importScreenshot} onClose={() => setScreenshotOpen(false)} />}
@@ -782,10 +796,10 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
 
       {changing && current?.edit && <div className="composer-last-edit" aria-hidden={busy} inert={busy}><span><Check size={12}/>Last edit: {current.edit.instruction}</span><button type="button" disabled={busy || s.arranging} onClick={() => setHistoryOpen(true)}>View history</button></div>}
       {/* What has been added, and the look once it is changed. With nothing to show, the row is not there at all. */}
-      {!changing && (attached || lookChanged) && <div className="composer-chips" aria-hidden={busy} inert={busy}>
+      {(changing ? references.length > 0 : attached || lookChanged) && <div className="composer-chips" aria-hidden={busy} inert={busy}>
         {references.map((r, i) => <button key={r.name + i} type="button" className="chip" aria-expanded={pop === `ref-${i}`} disabled={busy} onClick={() => toggle(`ref-${i}`)}><img src={r.data} alt=""/>{r.label || 'Unnamed'}</button>)}
-        {inspiration && <button type="button" className="chip" aria-expanded={pop === 'style'} disabled={busy} onClick={() => toggle('style')}><img className="is-wide" src={inspiration.image} alt=""/>Inspiration</button>}
-        {lookChanged && <button type="button" className="chip is-look" aria-label={`Look: ${lookSummary}`} title={`Look: ${lookSummary}`} aria-expanded={pop === 'look'} disabled={busy} onClick={() => toggle('look')}><SlidersHorizontal size={13}/><span>{lookSummary}</span></button>}
+        {!changing && inspiration && <button type="button" className="chip" aria-expanded={pop === 'style'} disabled={busy} onClick={() => toggle('style')}><img className="is-wide" src={inspiration.image} alt=""/>Inspiration</button>}
+        {!changing && lookChanged && <button type="button" className="chip is-look" aria-label={`Look: ${lookSummary}`} title={`Look: ${lookSummary}`} aria-expanded={pop === 'look'} disabled={busy} onClick={() => toggle('look')}><SlidersHorizontal size={13}/><span>{lookSummary}</span></button>}
       </div>}
 
       <div className="composer-working" role={busy ? 'status' : undefined} aria-live={busy ? 'polite' : undefined} aria-hidden={!busy} inert={!busy}>
@@ -821,8 +835,8 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
           {!hasAvatar && <button type="button" className="create-chip" aria-expanded={pop === 'avatar'} disabled={busy || full} onClick={() => toggle('avatar')}><UserRound size={15}/>My avatar</button>}
           <button type="button" className="create-chip" aria-label={`Rendering: ${nameOf(styleOptions, style)}`} aria-expanded={pop === 'render' || pop === 'style'} disabled={busy} onClick={() => toggle(inspired ? 'style' : 'render')}><Palette size={15}/>{nameOf(styleOptions, style)}<ChevronDown size={13}/></button>
           {!hasArt && <span className="create-format" role="group" aria-label="Format">
-            <a href={formatHref(false)} aria-current={asIcon ? undefined : 'true'}>Thumbnail</a>
-            <a href={formatHref(true)} aria-current={asIcon ? 'true' : undefined}>Icon</a>
+            <button type="button" disabled={busy} aria-current={asIcon ? undefined : 'true'} onClick={() => s.switchFormat(false)}>Thumbnail</button>
+            <button type="button" disabled={busy} aria-current={asIcon ? 'true' : undefined} onClick={() => s.switchFormat(true)}>Icon</button>
           </span>}
         </div>}
         <button type="submit" className="composer-go" disabled={!ready} aria-label={changing ? 'Apply change' : asIcon ? 'Generate icon' : 'Generate thumbnail'} title={changing ? 'Apply  (Enter)' : 'Generate  (Enter)'}>
@@ -830,8 +844,6 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
         </button>
       </form>
     </div>
-
-    {s.view === 'create' && <div className="create-quick" role="group" aria-label="More ways to start"><button type="button" onClick={() => setScreenshotOpen(true)}><ImagePlus size={16}/> Use a screenshot</button><button type="button" onClick={() => s.setView('edit')}><LayoutTemplate size={16}/> Blank canvas</button><button type="button" onClick={() => setLibraryOpen(true)}><BookImage size={16}/> Inspiration</button></div>}
 
     {/* Said only when it needs the user: a connected plan is the normal case. */}
     {connection && !connection.connected && <p className="composer-status">

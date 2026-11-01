@@ -1,9 +1,11 @@
 'use client';
 
-import { ArrowUpRight } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { HELP_TEXT } from '@/lib/site';
+import { HOSTED_ACCOUNTS } from '@/lib/supabase/config';
 import { currentAdmin, currentUser, logOut } from './AuthGate';
+import UpdateButton from './UpdateButton';
 
 type Account = { name: string; email: string; plan: string };
 type Status = { connected: boolean; reason?: string; account?: Account | null };
@@ -57,8 +59,8 @@ export default function AccountMenu() {
   const free = account?.plan === 'free';
   const bopziAccount = currentUser ? <>
     <hr />
-    <p className="account-row"><span>Bopzi access</span><b>Active</b></p>
-    {currentAdmin ? <a className="account-row is-link" href="/account"><span>Manage Bopzi access</span></a> : <button type="button" className="account-row is-link" onClick={() => void logOut()}><span>Remove access from this PC</span></button>}
+    {currentAdmin ? <a className="account-row is-link" href="/account"><span>Admin panel</span></a> : <>{HOSTED_ACCOUNTS && <a className="account-row is-link" href="/account"><span>Account</span></a>}<button type="button" className="account-row is-link" onClick={() => void logOut()}><span>Log out</span></button></>}
+    <p className="account-row"><span>Support</span><b>{HELP_TEXT}</b></p>
   </> : null;
   const disconnect = async () => {
     setLeaving('busy');
@@ -77,6 +79,7 @@ export default function AccountMenu() {
 
   return (
     <div className="account" ref={box}>
+      <UpdateButton />
       {state && !state.connected
         ? <button type="button" className="account-connect" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((v) => !v)}>Connect</button>
         : <button type="button" className="account-button" aria-label={account ? `ChatGPT account: ${label}` : 'ChatGPT account'} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((v) => !v)}>
@@ -90,7 +93,6 @@ export default function AccountMenu() {
           </div>
           <hr />
           <p className="account-row"><span>Plan</span><b><i className={free ? 'is-warn' : undefined} />{plan ? `ChatGPT ${plan}` : 'ChatGPT'}</b></p>
-          <a className="account-row is-link" href="https://chatgpt.com/#settings/Account" target="_blank" rel="noreferrer"><span>Manage plan</span><ArrowUpRight size={15} aria-hidden="true" /></a>
           {leaving ? <div className="account-leave">
             <b>Disconnect ChatGPT?</b>
             <p>This signs Codex out on this computer. AI images stop until you connect again.</p>

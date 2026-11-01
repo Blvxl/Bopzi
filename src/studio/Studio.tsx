@@ -193,7 +193,7 @@ export default function Studio({ demos }: { demos: Demo[] }) {
       const saved = id ? await getProject(id).catch(() => undefined) : await Promise.resolve(undefined);
       if (!alive) return;
       if (!saved) {
-        if (id) notify('That project is not saved in this browser, so a new one was started.', 'warn');
+        if (id) notify('That project is not saved on this computer, so a new one was started.', 'warn');
         if (id) window.history.replaceState(null, '', '/studio');
         const next = fresh();
 
@@ -318,6 +318,25 @@ export default function Studio({ demos }: { demos: Demo[] }) {
     setMeta((m) => (m ? { ...m, ...patch } : m));
     setMetaRev((v) => v + 1);
   }, []);
+
+  const switchFormat = useCallback((icon: boolean) => {
+    if (state.doc.layers.length || !meta) return;
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    stored.current = false;
+    thumbRef.current = undefined;
+    dispatch({ type: 'load', doc: { ...emptyDoc(), ...(icon ? { size: { w: ICON_SIZE, h: ICON_SIZE } } : {}) } });
+    setMeta({ ...meta, id: uid('p'), name: icon ? 'Untitled icon' : 'Untitled thumbnail', createdAt: Date.now(), exportedAt: undefined });
+    setMetaRev(0);
+    setSaveState('new');
+    setViewState('create');
+    setTakes(null);
+    const url = new URL(window.location.href);
+    if (icon) url.searchParams.set('format', 'icon'); else url.searchParams.delete('format');
+    if (meta.prompt.idea.trim()) url.searchParams.set('idea', meta.prompt.idea); else url.searchParams.delete('idea');
+    url.searchParams.delete('p');
+    window.history.replaceState({}, '', url);
+    window.dispatchEvent(new Event('bopzi:formatchange'));
+  }, [meta, state.doc.layers.length]);
 
   const isProtected = useCallback((l: Layer) => l.type === 'image' && l.original && !!meta?.lockOriginals, [meta?.lockOriginals]);
 
@@ -653,7 +672,7 @@ export default function Studio({ demos }: { demos: Demo[] }) {
     setCut({ id, status: 'Removing the background' });
     try {
       const source = getLoadedAsset(layer.assetId) ?? (await loadAsset(layer.assetId));
-      if (!source) throw new Error('The source file for this layer is no longer in this browser.');
+      if (!source) throw new Error('The source file for this layer is no longer on this computer.');
       const png = await removeBackground(source.record.blob, (percent) => setCut({ id, status: percent < 100 ? `Getting the remover ready ${Math.round(percent)}%` : 'Removing the background' }));
       const rec = await importImage(new File([png], `${source.record.name.replace(/\.[a-z0-9]+$/i, '')}-cutout.png`, { type: 'image/png' }), m.id);
       // The user asked for exactly this change, so it goes through even on a protected original. Undo brings the first file back.
@@ -928,7 +947,7 @@ export default function Studio({ demos }: { demos: Demo[] }) {
       void navigator.clipboard.writeText(CLIP_MARK + layers[0].id).catch(() => {});
       notify(layers.length > 1 ? `${layers.length} layers copied. Paste them here or in another project.` : 'Layer copied. Paste it here or in another project.');
     } catch {
-      notify('The layer could not be copied in this browser.', 'warn');
+      notify('The layer could not be copied on this computer.', 'warn');
     }
   }, [notify, familyOf]);
 
@@ -948,7 +967,7 @@ export default function Studio({ demos }: { demos: Demo[] }) {
           if (!here) {
             // The file belongs to the other project, so this one gets its own copy of it.
             const source = await getAsset(copy.assetId);
-            if (!source) throw new Error('The image behind that layer is no longer in this browser.');
+            if (!source) throw new Error('The image behind that layer is no longer on this computer.');
             copy = { ...copy, assetId: (await importImage(source.blob, m.id, source.name)).id };
           }
         }
@@ -1090,6 +1109,7 @@ export default function Studio({ demos }: { demos: Demo[] }) {
     () =>
       meta && {
         projectId: meta.id,
+        switchFormat,
         view,
         setView,
         takes,
@@ -1169,7 +1189,7 @@ export default function Studio({ demos }: { demos: Demo[] }) {
         editText,
         notify,
       },
-    [meta, view, setView, takes, previewOpen, snapshot, region, marking, exportSet, generation, demos, state.doc, selected, fontsVersion, isProtected, select, update, apply, remove, duplicate, reorder, addFiles, addGenerated, replaceImage, addText, addTexts, suggested, exportPng, asked, addArrow, recolorArrow, editingText, stopEditingText, found, arrange, arranging, arrangeStatus, arrangeBrief, arrangeError, cancelArrange, arrangeReference, setArrangeReference, arranged, chooseTake, setWording, clearArranged, addLight, selectionIds, group, ungroup, align,addShape, addKit, saved, savePiece, addSaved, removeSaved, copyLayer, cutout, cut, patchMeta, editText, notify],
+    [meta, view, setView, takes, previewOpen, snapshot, region, marking, exportSet, generation, demos, state.doc, selected, fontsVersion, isProtected, select, update, apply, remove, duplicate, reorder, addFiles, addGenerated, replaceImage, addText, addTexts, suggested, exportPng, asked, addArrow, recolorArrow, editingText, stopEditingText, found, arrange, arranging, arrangeStatus, arrangeBrief, arrangeError, cancelArrange, arrangeReference, setArrangeReference, arranged, chooseTake, setWording, clearArranged, addLight, selectionIds, group, ungroup, align,addShape, addKit, saved, savePiece, addSaved, removeSaved, copyLayer, cutout, cut, patchMeta, switchFormat, editText, notify],
   );
 
   if (!meta || !api) return <StudioSplash label={new URLSearchParams(window.location.search).has('demo') ? 'Setting up the demo…' : undefined} />;

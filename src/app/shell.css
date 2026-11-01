@@ -16,6 +16,8 @@
 .app-sidebar > a[aria-current=page] { background:#ff704c22; color:#ffb39c; cursor:default; }
 .app-sidebar > a:focus-visible { outline:2px solid #ff896c; outline-offset:1px; }
 .app-sidebar-gap { flex:1; }
+.app-sidebar > a.app-sidebar-cta { margin-left:8px; background:#ff704c; color:#20100b; font-weight:650; }
+.app-sidebar > a.app-sidebar-cta:hover { background:#ff8266; color:#20100b; }
 
 @media (max-width:640px) {
   .app-sidebar { padding:0 10px; gap:1px; }
@@ -27,14 +29,6 @@
   .app-sidebar-gap { display:none; }
 }
 @media (prefers-reduced-motion:reduce) { .app-sidebar a { transition:none; } }
-
-/* The home page's bar: the same height, with its one button. */
-.app-sidebar.is-home { background:#111110; }
-.app-sidebar.is-home > a:not(.app-sidebar-mark) span { font-size:14px; }
-.app-sidebar.is-home > a.app-sidebar-cta { margin-left:8px; min-height:38px; padding:0 15px; background:#ff704c; color:#20100b; }
-.app-sidebar.is-home > a.app-sidebar-cta span { font-weight:650; }
-.app-sidebar.is-home > a.app-sidebar-cta:hover { background:#ff8767; color:#20100b; }
-@media (max-width:640px) { .app-sidebar.is-home > a.is-section { display:none; } }
 
 /* One bar at a time: an open project's own bar takes over from the site's. */
 .app-shell:has(.creator-studio:not(.is-fresh)) .app-sidebar { display:none; }
@@ -100,3 +94,9 @@ button.account-row { width:100%; cursor:pointer; font:inherit; }
 .account-leave button { height:36px; border-radius:10px; background:#ffffff12; color:#f6f5f2; font:500 14px/1 var(--font-sans); cursor:pointer; }
 .account-leave button.is-go { background:#f6f5f2; color:#111110; }
 .account-leave button:disabled { opacity:.55; cursor:progress; }
+
+.account { display:flex; align-items:center; gap:10px; }
+.update-button { display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 13px; border-radius:999px; background:#f6f5f2; color:#111110; font:600 13px/1 var(--font-sans); white-space:nowrap; cursor:pointer; transition:background .14s ease; }
+.update-button:hover:not(:disabled) { background:#fff; }
+.update-button:disabled { background:#ffffff1c; color:#f6f5f2; font-variant-numeric:tabular-nums; cursor:progress; }
+.update-button:focus-visible { outline:2px solid #ff896c; outline-offset:2px; }

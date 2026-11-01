@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,16 +37,25 @@ await rm(path.join(bin, 'codex.exe'), { force: true });
 await writeFile(path.join(bin, 'codex.exe'), await readFile(path.join(unpack, codex)));
 await rm(unpack, { recursive: true, force: true });
 
-// The server is built on this machine, so a build for the other chip needs that chip's image library.
+// The server's build leaves out the image library's DLLs, and may hold the wrong chip's copy, so the whole package always goes in.
 const standalone = path.join(root, '.next', 'standalone', 'node_modules', '@img');
 const sharpVersion = JSON.parse(await readFile(path.join(root, 'node_modules', 'sharp', 'package.json'), 'utf8')).version;
-if (arch !== process.arch) {
-  const lib = await mkdtemp(path.join(os.tmpdir(), 'bopzi-sharp-'));
-  execFileSync('npm', ['pack', `@img/sharp-win32-${arch}@${sharpVersion}`, '--silent'], { cwd: lib, stdio: 'ignore', shell: true });
-  execFileSync('tar', ['-xzf', (await readdir(lib)).find((f) => f.endsWith('.tgz'))], { cwd: lib, stdio: 'ignore' });
-  await rm(path.join(standalone, `sharp-win32-${process.arch}`), { recursive: true, force: true });
-  await cp(path.join(lib, 'package'), path.join(standalone, `sharp-win32-${arch}`), { recursive: true });
-  await rm(lib, { recursive: true, force: true });
+const lib = await mkdtemp(path.join(os.tmpdir(), 'bopzi-sharp-'));
+execFileSync('npm', ['pack', `@img/sharp-win32-${arch}@${sharpVersion}`, '--silent'], { cwd: lib, stdio: 'ignore', shell: true });
+execFileSync('tar', ['-xzf', (await readdir(lib)).find((f) => f.endsWith('.tgz'))], { cwd: lib, stdio: 'ignore' });
+for (const chip of ['x64', 'arm64']) await rm(path.join(standalone, `sharp-win32-${chip}`), { recursive: true, force: true });
+await cp(path.join(lib, 'package'), path.join(standalone, `sharp-win32-${arch}`), { recursive: true });
+await rm(lib, { recursive: true, force: true });
+const sharpFiles = await readdir(path.join(standalone, `sharp-win32-${arch}`, 'lib'));
+if (!sharpFiles.some((f) => f.startsWith('libvips-42'))) throw new Error('The image library is missing its DLLs.');
+
+// The server reaches its outside packages through links to this folder, which would mean nothing in a packed app.
+const linked = path.join(root, '.next', 'standalone', '.next', 'node_modules');
+for (const name of await readdir(linked).catch(() => [])) {
+  const link = path.join(linked, name);
+  const target = await realpath(link);
+  await rm(link, { recursive: true, force: true });
+  await cp(target, link, { recursive: true, dereference: true });
 }
 console.log(`Bundled Codex ${codexVersion} for ${arch}.`);
 

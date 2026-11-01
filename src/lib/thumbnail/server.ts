@@ -16,19 +16,20 @@ export const connectionStatus = codexStatus;
 export async function prepareThumbnail(brief: ThumbnailBrief): Promise<Prepared> {
   const images = [...brief.references];
   const styleImage = brief.styleReferenceId ? await styleReferenceImage(brief.styleReferenceId) : brief.styleReference;
-  let notes: string | undefined;
+  let measuredStyle: string | undefined;
   if (styleImage) {
     images.push(styleImage);
-    notes = await styleNotes(styleImage);
+    measuredStyle = await styleNotes(styleImage);
   }
   const pose = posePick(brief);
   if (pose) images.push(await poseGuide(pose));
-  return { prompt: thumbnailPrompt(brief, notes), images, shape: brief.icon ? 'square' : 'wide' };
+  return { prompt: thumbnailPrompt(brief, measuredStyle), images, shape: brief.icon ? 'square' : 'wide' };
 }
 
 /** Changes one thing in an existing result. The current image is the only input, so the composition carries over. */
 export function prepareRefine(refine: ThumbnailRefine): Prepared {
-  return { prompt: refinePrompt(refine.instruction, refine.region, refine.icon), images: [refine.image], shape: refine.icon ? 'square' : 'wide' };
+  const extras = refine.references ?? [];
+  return { prompt: refinePrompt(refine.instruction, refine.region, refine.icon, extras.map((r) => r.label)), images: [refine.image, ...extras.map((r) => r.data)], shape: refine.icon ? 'square' : 'wide' };
 }
 
 /** The signed-in account for this computer's own pages. The helper does not offer this. */

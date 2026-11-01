@@ -18,6 +18,12 @@ export default function HomeShowcase() {
   const [hovered, setHovered] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
+
+  // Signed-in creators get the prompt box; everyone else is pointed at pricing.
+  useEffect(() => {
+    fetch('/api/access', { cache: 'no-store' }).then((r) => r.json()).then((a: { signedIn?: boolean }) => setSignedIn(!!a.signedIn)).catch(() => setSignedIn(false));
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -49,14 +55,16 @@ export default function HomeShowcase() {
   return <>
     <section className="home-hero" aria-labelledby="home-title">
       <h1 id="home-title">Roblox thumbnails <br/>that get the <em>click.</em></h1>
-      <p>Describe your game and Bopzi draws it with your own ChatGPT plan. Finish it with text and layers, right on your computer.</p>
-      <form className="home-prompt" action="/studio" method="get">
-        <input type="hidden" name="auto" value="1"/>
-        <label className="sr-only" htmlFor="home-idea">Your idea</label>
-        <input id="home-idea" name="idea" maxLength={4000} autoComplete="off" placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
-        <button type="submit" aria-label="Start"><ArrowUp size={19} strokeWidth={2.4}/></button>
-      </form>
-      <div className="home-starts"><Link href="/studio?start=screenshot"><ImagePlus size={16}/> Use a screenshot</Link><Link href="/studio?start=canvas"><Layers2 size={16}/> Blank canvas</Link></div>
+      <p>Describe your game and Bopzi draws it with your own ChatGPT plan. Finish it with text and layers, in your browser.</p>
+      {signedIn ? <>
+        <form className="home-prompt" action="/studio" method="get">
+          <input type="hidden" name="auto" value="1"/>
+          <label className="sr-only" htmlFor="home-idea">Your idea</label>
+          <input id="home-idea" name="idea" maxLength={4000} autoComplete="off" placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+          <button type="submit" aria-label="Start"><ArrowUp size={19} strokeWidth={2.4}/></button>
+        </form>
+        <div className="home-starts"><Link href="/studio?start=screenshot"><ImagePlus size={16}/> Use a screenshot</Link><Link href="/studio?start=canvas"><Layers2 size={16}/> Blank canvas</Link></div>
+      </> : <div className="home-cta"><Link href="/pricing" className="home-cta-main">Get started</Link><Link href="/studio" className="home-cta-alt">Log in</Link></div>}
     </section>
     <section className="home-stage-wrap" aria-label="Example thumbnails" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <div className="home-stage">

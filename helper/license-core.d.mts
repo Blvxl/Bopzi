@@ -1,4 +1,5 @@
 export type License = { username: string; device: string; id: string };
+export function isOwnerEmail(email: unknown): boolean;
 export function accountId(username: string): string;
 export function deviceCodeOf(fingerprint: string): string;
 export function usernameOf(value: unknown): string;

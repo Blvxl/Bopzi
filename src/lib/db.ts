@@ -1,127 +1,134 @@
 import type { AssetRecord, Project } from './types';
 import { uid } from './util';
 
-// Everything Bopzi saves lives in this one IndexedDB database, in the user's browser.
-const DB_NAME = 'bopzi';
-const DB_VERSION = 3;
+// Everything Bopzi saves lives on this computer's disk, through /api/library.
+type Store = 'projects' | 'assets' | 'attachments';
+type Call = { op: 'get' | 'list' | 'put' | 'delete'; store: Store; key?: string; group?: string; value?: unknown; onlyIfNew?: boolean };
 
-let dbPromise: Promise<IDBDatabase> | null = null;
+async function call<T>(body: Call) {
+  const res = await fetch('/api/library', { method: 'POST', headers: { 'content-type': 'application/json', 'x-bopzi-local': '1' }, body: JSON.stringify(body) });
+  const reply = await res.json().catch(() => null) as T & { error?: string } | null;
+  if (!res.ok) throw new Error(reply?.error ?? 'Could not reach your projects. Try again.');
+  return reply as T;
+}
 
-function openDb() {
-  if (!dbPromise) {
-    dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        const has = (name: string) => db.objectStoreNames.contains(name);
-        if (!has('projects')) db.createObjectStore('projects', { keyPath: 'id' });
-        if (!has('assets')) db.createObjectStore('assets', { keyPath: 'id' }).createIndex('projectId', 'projectId');
-        // v2: the images attached to a project's composer, kept apart so autosave never rewrites them.
-        if (!has('attachments')) db.createObjectStore('attachments', { keyPath: 'projectId' });
-      };
-      req.onsuccess = () => {
-        const db = req.result;
-        // When a newer Bopzi tab needs to upgrade the database, let go of it so that tab is not left waiting.
-        db.onversionchange = () => {
-          db.close();
-          dbPromise = null;
-        };
-        resolve(db);
-      };
-      req.onerror = () => reject(req.error);
-      // An older Bopzi tab is holding the database open. Say so; do not wait in silence.
-      req.onblocked = () => reject(new Error('Another Bopzi tab is blocking storage. Close your other Bopzi tabs, then try again.'));
-    });
-    dbPromise.catch(() => (dbPromise = null));
+// Files hold text, so images travel inside a record as data URLs.
+const dataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(reader.error);
+  reader.readAsDataURL(blob);
+});
+async function pack(value: unknown): Promise<unknown> {
+  if (value instanceof Blob) return { $blob: await dataUrl(value) };
+  if (Array.isArray(value)) return Promise.all(value.map(pack));
+  if (value && typeof value === 'object') return Object.fromEntries(await Promise.all(Object.entries(value).map(async ([k, v]) => [k, await pack(v)])));
+  return value;
+}
+function unpack(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(unpack);
+  if (!value || typeof value !== 'object') return value;
+  const blob = (value as { $blob?: unknown }).$blob;
+  if (typeof blob === 'string') {
+    const [head, data] = blob.split(',');
+    return new Blob([Uint8Array.from(atob(data), (c) => c.charCodeAt(0))], { type: /^data:([^;]*)/.exec(head)?.[1] ?? '' });
   }
-  return dbPromise;
+  return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, unpack(v)]));
 }
 
-const wrap = <T>(req: IDBRequest<T>) =>
-  new Promise<T>((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-
-async function store(name: 'projects' | 'assets' | 'attachments', mode: IDBTransactionMode = 'readonly') {
-  return (await openDb()).transaction(name, mode).objectStore(name);
-}
+const get = async <T>(store: Store, key: string) => (unpack(await call({ op: 'get', store, key })) ?? undefined) as T | undefined;
+const list = async <T>(store: Store, group?: string) => unpack(await call({ op: 'list', store, group })) as T[];
+/** One save at a time, in order, so an older autosave can never land on top of a newer one. */
+let saving: Promise<unknown> = Promise.resolve();
+const inOrder = <T>(job: () => Promise<T>) => {
+  const next = saving.catch(() => undefined).then(job);
+  saving = next;
+  return next;
+};
+const put = async (store: Store, key: string, value: unknown, group?: string, onlyIfNew?: boolean) => {
+  const packed = await pack(value);
+  await inOrder(() => call({ op: 'put', store, key, value: packed, group, onlyIfNew }));
+};
+const remove = (store: Store, key: string) => inOrder(() => call({ op: 'delete', store, key }));
 
 /** Set when someone signs in. Projects live in one database, so each is marked with its owner. */
 let owner = '';
 export const setOwner = (id: string) => { owner = id; };
 const mine = (p: Project | undefined) => (p && p.owner === owner ? p : undefined);
 
-/** Projects from before accounts go to the first person who signs in on this device. */
-export async function claimProjects() {
-  const all = await wrap<Project[]>((await store('projects')).getAll());
-  const known = /^[a-f0-9]{24}$/;
-  const accounts = new Set(all.map((p) => p.owner).filter((o) => o && o !== owner && known.test(o)));
-  for (const project of all) if (!project.owner || (accounts.size === 1 && accounts.has(project.owner))) await putProject({ ...project, owner });
+/**
+ * Projects saved before this owner system have no real owner, so they go to whoever signs in on this device.
+ * The app's owner also takes back projects tagged by earlier sign-in versions on this computer.
+ */
+export async function claimProjects(admin = false) {
+  await importBrowserProjects();
+  const all = await list<Project>('projects');
+  const earlier = (tag = '') => admin && tag !== owner && /^[a-f0-9]{24}$/.test(tag);
+  for (const project of all) if (!project.owner || project.owner === 'local' || earlier(project.owner)) await putProject({ ...project, owner });
 }
 
 export async function putProject(project: Project) {
-  await wrap((await store('projects', 'readwrite')).put({ ...project, owner: project.owner ?? owner }));
+  await put('projects', project.id, { ...project, owner: project.owner ?? owner });
 }
 
 export async function getProject(id: string) {
-  return mine(await wrap<Project | undefined>((await store('projects')).get(id)));
+  return mine(await get<Project>('projects', id));
 }
 
 export async function listProjects() {
-  const all = await wrap<Project[]>((await store('projects')).getAll());
+  const all = await list<Project>('projects');
   return all.filter((p) => p.owner === owner).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function putAsset(asset: AssetRecord) {
-  await wrap((await store('assets', 'readwrite')).put(asset));
+  await put('assets', asset.id, asset, asset.projectId);
 }
 
 export async function getAsset(id: string) {
-  return wrap<AssetRecord | undefined>((await store('assets')).get(id));
+  return get<AssetRecord>('assets', id);
 }
 
 export async function listProjectAssets(projectId: string) {
-  return wrap<AssetRecord[]>((await store('assets')).index('projectId').getAll(projectId));
+  return list<AssetRecord>('assets', projectId);
 }
 
 export async function deleteAsset(id: string) {
-  await wrap((await store('assets', 'readwrite')).delete(id));
+  await remove('assets', id);
 }
 
 /** The avatar, images and inspiration attached in the composer, as the composer keeps them. */
 export type Attachments<T = unknown> = { projectId: string; references: T[]; style: T | null };
 
 export async function getAttachments<T>(projectId: string) {
-  return wrap<Attachments<T> | undefined>((await store('attachments')).get(projectId));
+  return get<Attachments<T>>('attachments', projectId);
 }
 
 export async function putAttachments<T>(value: Attachments<T>) {
-  await wrap((await store('attachments', 'readwrite')).put(value));
+  await put('attachments', value.projectId, value);
 }
 
 // The project's game icon sits in the same store under its own key.
 const iconKey = (projectId: string) => `${projectId}:icon`;
 
 export async function getIcon(projectId: string) {
-  const row = await wrap<{ blob?: Blob } | undefined>((await store('attachments')).get(iconKey(projectId)));
+  const row = await get<{ blob?: Blob }>('attachments', iconKey(projectId));
   return row?.blob;
 }
 
 export async function putIcon(projectId: string, blob: Blob) {
-  await wrap((await store('attachments', 'readwrite')).put({ projectId: iconKey(projectId), blob }));
+  await put('attachments', iconKey(projectId), { projectId: iconKey(projectId), blob });
 }
 
 export async function deleteIcon(projectId: string) {
-  await wrap((await store('attachments', 'readwrite')).delete(iconKey(projectId)));
+  await remove('attachments', iconKey(projectId));
 }
 
 export async function deleteProject(id: string) {
   const assets = await listProjectAssets(id);
   for (const a of assets) await deleteAsset(a.id);
-  await wrap((await store('attachments', 'readwrite')).delete(id));
+  await remove('attachments', id);
   await deleteIcon(id);
-  await wrap((await store('projects', 'readwrite')).delete(id));
+  await remove('projects', id);
 }
 
 /** Copies a project and its image files so the two can be edited independently. */
@@ -153,6 +160,29 @@ export async function duplicateProject(id: string) {
   if (attached) await putAttachments({ ...attached, projectId: newId });
   await putProject(copy);
   return copy;
+}
+
+/** Copies anything still in the browser's old storage onto disk, once. The old copy stays where it is. */
+async function importBrowserProjects() {
+  const DONE = 'bopzi-projects-on-disk';
+  try { if (localStorage.getItem(DONE)) return; } catch { /* no local storage: the copy just runs again, and skips what's there */ }
+  if (!(await indexedDB.databases()).some((d) => d.name === 'bopzi')) return;
+  const old = await new Promise<IDBDatabase>((resolve, reject) => {
+    const req = indexedDB.open('bopzi');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  const all = (name: string) => new Promise<Record<string, unknown>[]>((resolve, reject) => {
+    if (!old.objectStoreNames.contains(name)) return resolve([]);
+    const req = old.transaction(name).objectStore(name).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  for (const row of await all('projects')) await put('projects', String(row.id), row, undefined, true);
+  for (const row of await all('assets')) await put('assets', String(row.id), row, String(row.projectId), true);
+  for (const row of await all('attachments')) await put('attachments', String(row.projectId), row, undefined, true);
+  old.close();
+  try { localStorage.setItem(DONE, '1'); } catch { /* see above */ }
 }
 
 /** Blank projects saved by older versions never had anything in them, so lists leave them out. */

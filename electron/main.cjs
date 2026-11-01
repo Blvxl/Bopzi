@@ -39,7 +39,7 @@ else {
   });
 }
 
-/** Projects are stored per address, so a changing port would hide them. The same port is used every launch when it is free. */
+/** Projects are on disk, so any of these works. Small preferences still belong to one address, so the first free port is kept when possible. */
 const HOME_PORTS = [47721, 47722, 47723, 47724, 47725];
 async function isFree(port) {
   const server = net.createServer();
@@ -125,6 +125,7 @@ async function startApp() {
   await waitForServer();
   buildMenu();
   createWindow();
+  if (isPackaged) require('./updater.cjs').startUpdates(() => mainWindow, () => appUrl);
 }
 
 function buildMenu() {
@@ -163,6 +164,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 

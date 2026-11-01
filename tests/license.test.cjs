@@ -63,6 +63,10 @@ test('a bad device code or username is refused when making a key', () => {
   assert.throws(() => core.makeKey({ username: '!', device: DEVICE }, owner.priv));
 });
 
+test('other emails do not count as the owner', () => {
+  for (const value of ['someone@gmail.com', 'owner@example.com.evil.com', '', null, undefined]) assert.equal(core.isOwnerEmail(value), false);
+});
+
 test('the owner check matches only the real private key', () => {
   assert.equal(core.publicKeyOf(owner.priv).trim(), owner.pub.toString().trim());
   assert.notEqual(core.publicKeyOf(stranger.priv).trim(), owner.pub.toString().trim());

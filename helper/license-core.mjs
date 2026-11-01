@@ -7,6 +7,10 @@ const LICENSE_CONTEXT = 'bopzi-license-v1\n';
 const LIST_CONTEXT = 'bopzi-disabled-v1\n';
 const b64 = (data) => Buffer.from(data).toString('base64url');
 
+/** The owner's ChatGPT email, as a one-way hash so the address itself is not in the source. */
+const OWNER_EMAIL_HASH = 'e3cdbe3b2266555e9f89e5daf9b3c7fafc48f8f3a456915e171c396a88593fb4';
+export const isOwnerEmail = (email) => typeof email === 'string' && createHash('sha256').update(`bopzi-owner:${email.trim().toLowerCase()}`).digest('hex') === OWNER_EMAIL_HASH;
+
 export const accountId = (username) => createHash('sha256').update(`bopzi:${username}`).digest('hex').slice(0, 24);
 export const deviceCodeOf = (fingerprint) => createHash('sha256').update(`bopzi-device:${fingerprint}`).digest('hex').slice(0, 16).toUpperCase().replace(/(.{4})(?=.)/g, '$1-');
 const cleanDevice = (code) => String(code ?? '').toUpperCase().replace(/[^0-9A-F]/g, '');

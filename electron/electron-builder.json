@@ -10,7 +10,9 @@
   },
   "files": [
     "main.cjs",
-    "package.json"
+    "package.json",
+    "updater.cjs",
+    "preload.cjs"
   ],
   "extraResources": [
     {

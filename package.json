@@ -1,22 +1,27 @@
 {
   "name": "bopzi",
   "description": "Creative studio for Roblox thumbnails and game icons",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
+    "start:web": "next start",
     "desktop": "electron .",
     "desktop:prepare": "node scripts/prepare-desktop.mjs",
     "desktop:package": "node scripts/prepare-desktop.mjs --arm64 && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
     "desktop:pack": "npm run build && node scripts/prepare-desktop.mjs --arm64 && cd electron && electron-builder --config electron-builder.json --win nsis --arm64",
     "desktop:pack:x64": "npm run build && node scripts/prepare-desktop.mjs --x64 && cd electron && electron-builder --config electron-builder.json --win nsis --x64",
     "typecheck": "tsc --noEmit",
+    "release:publish": "node scripts/publish-release.mjs",
+    "site:publish": "node scripts/publish-site.mjs",
     "helper": "node helper/bopzi-helper.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "konva": "^10.7.1",
     "lucide-react": "^1.55.0",
     "next": "^16.4.3",

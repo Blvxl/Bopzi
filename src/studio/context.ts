@@ -57,6 +57,8 @@ export type StudioApi = {
   /** Downloads one full thumbnail per concept id, each under Roblox's 3 MB limit. */
   exportSet: (ids: string[]) => Promise<void>;
   projectId: string;
+  /** Starts a fresh empty project in the other canvas format without reloading the editor. */
+  switchFormat: (icon: boolean) => void;
   generation: GenerationState | null;
   setGeneration: (state: GenerationState | null) => void;
   /** Demo projects; files is set on the ones whose artwork is installed. */

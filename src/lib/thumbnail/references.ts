@@ -166,6 +166,37 @@ export async function gameByPlace(placeId: number): Promise<ReferenceGame | null
   const universeId = res?.ok ? ((await res.json()) as { universeId?: number | null }).universeId : null;
   return universeId ? gameById(universeId) : null;
 }
+
+export type DealGame = { name: string; url: string; playing: number; visits: number; imageUrl?: string; iconUrl?: string };
+const dealGames = new Map<string, { at: number; game: DealGame }>();
+const DEAL_GAME_AGE = 5 * 60 * 1000;
+
+/** The live card for a deal's game, from its roblox.com/games/<id> link. Text that isn't a link has no card. */
+export async function dealGame(text: string): Promise<DealGame | null> {
+  const place = /roblox\.com\/(?:[a-z-]+\/)?games\/(\d+)/i.exec(text)?.[1] ?? /^\d+$/.exec(text.trim())?.[0];
+  if (!place) return null;
+  const known = dealGames.get(place);
+  if (known && Date.now() - known.at < DEAL_GAME_AGE) return known.game;
+  const read = <T,>(url: string) => fetch(url, { signal: AbortSignal.timeout(8000), cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<T> : null)).catch(() => null);
+  const universe = await read<{ universeId?: number | null }>(`https://apis.roblox.com/universes/v1/places/${place}/universe`);
+  const id = universe?.universeId;
+  if (!id) return known?.game ?? null;
+  const [details, images, icons] = await Promise.all([
+    read<{ data?: { name: string; rootPlaceId: number; playing?: number; visits?: number }[] }>(`https://games.roblox.com/v1/games?universeIds=${id}`),
+    thumbnailsFor([id]).catch(() => new Map<number, string>()),
+    read<{ data?: { imageUrl?: string }[] }>(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${id}&returnPolicy=PlaceHolder&size=256x256&format=Webp&isCircular=false`),
+  ]);
+  const info = details?.data?.[0];
+  if (!info) return known?.game ?? null;
+  const imageUrl = images.get(id), iconUrl = icons?.data?.[0]?.imageUrl;
+  const game: DealGame = {
+    name: info.name, url: `https://www.roblox.com/games/${info.rootPlaceId}`, playing: info.playing ?? 0, visits: info.visits ?? 0,
+    imageUrl: imageUrl && isRobloxImageUrl(imageUrl) ? imageUrl : undefined,
+    iconUrl: iconUrl && isRobloxImageUrl(iconUrl) ? iconUrl : undefined,
+  };
+  dealGames.set(place, { at: Date.now(), game });
+  return game;
+}
 export type ArrangeReference ={ name: string; sourceUrl: string; imageUrl: string; image: string };
 /** Public widescreen examples; popularity is not a design-quality score. */
 export async function arrangementReferences(query: string, signal: AbortSignal): Promise<ArrangeReference[]> {

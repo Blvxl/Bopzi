@@ -106,3 +106,13 @@
 .auth-card textarea:hover { border-color: #ffffff38; }
 .auth-card textarea:focus { border-color: #ff704c; box-shadow: 0 0 0 3px #ff704c30; }
 .auth-card label:first-of-type { margin-top: 18px; }
+
+.auth-help { justify-self: center; margin-top: 16px; color: #a8a39d; font-size: 14px; }
+
+.auth-card input[type=email],.auth-card input[type=password] { min-height: 46px; padding: 0 14px; border: 1px solid #ffffff1f; border-radius: 12px; background: #11100f; color: #f6f5f2; font: 16px/1.4 var(--font-sans); }
+.auth-card input:focus-visible { outline: 2px solid #ff896c; outline-offset: 1px; }
+.auth-alt { min-height: 46px; margin-top: 10px; border: 1px solid #ffffff22; border-radius: 12px; background: none; color: #f6f5f2; font: 600 15px/1 var(--font-sans); cursor: pointer; }
+.auth-alt:hover { background: #ffffff0d; }
+.auth-switch { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 16px; }
+.auth-switch button { min-height: 32px; padding: 0; border: 0; background: none; color: #ffb39c; font: 14px/1 var(--font-sans); cursor: pointer; }
+.auth-switch button:hover { text-decoration: underline; }

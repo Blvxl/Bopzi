@@ -57,9 +57,9 @@ test('the image tool is only told about images it receives, in order', () => {
   const hands = forImageTool(thumbnailPrompt(parseThumbnailBrief({ ...brief, pose: 'none', scene: 'Keep both hands from the inspiration while mining.', styleReference: image, references: [image] })));
   assert.deepEqual([...new Set([...hands.matchAll(/^Image (\d)/gm)].map(m => m[1]))], ['1', '2']);
 });
-test('thumbnails, icons and edits all describe blocky Roblox hands', () => {
+test('thumbnails, icons and edits all describe chunky hands that can grip', () => {
   const { refinePrompt } = load('src/lib/thumbnail/prompt.ts');
-  const hand = /HANDS: Every Roblox avatar has simple blocky Roblox hands/;
+  const hand = /HANDS: Every Roblox avatar has chunky Roblox GFX hands[\s\S]*exactly four short, thick, simple fingers[\s\S]*wrap around anything held[\s\S]*Never a plain cube[\s\S]*never a mitten or two fat fingers/;
   assert.match(forImageTool(thumbnailPrompt(parseThumbnailBrief(brief))), hand);
   assert.match(forImageTool(thumbnailPrompt(parseThumbnailBrief({ ...brief, icon: true }))), hand);
   assert.match(refinePrompt('Give the avatar a sword'), hand);
@@ -90,6 +90,36 @@ test('an unmarked edit finds its area first and keeps what it does not need', ()
   const corner = autoArea(' [0.8, 0.8, 0.5, 0.5]\n');
   assert.ok(Math.abs(corner.x + corner.w - 1) < 1e-9 && Math.abs(corner.y + corner.h - 1) < 1e-9);
   for (const answer of ['whole', '[0, 0, 1, 1]', '[0.5, 0.5]', '[0.5, 0.5, 0.001, 0.4]', 'the corner', '[1, 2, 3, 4]']) assert.equal(autoArea(answer), null);
+});
+test('thumbnails, icons and edits all require a complete avatar face', () => {
+  const { refinePrompt } = load('src/lib/thumbnail/prompt.ts');
+  const face = /FACE: Every visible Roblox avatar has a complete printed face: two clear eyes and a mouth/;
+  assert.match(forImageTool(thumbnailPrompt(parseThumbnailBrief(brief))), face);
+  assert.match(forImageTool(thumbnailPrompt(parseThumbnailBrief({ ...brief, icon: true }))), face);
+  assert.match(refinePrompt('Fix the face'), face);
+});
+test('an automatic box is refused when the change runs across its edge', () => {
+  const { boxHoldsChange } = load('src/lib/thumbnail/prompt.ts');
+  const W = 40, H = 20, blank = () => new Uint8ClampedArray(W * H * 4).fill(100);
+  const paint = (image, x0, y0, x1, y1) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) image[(y * W + x) * 4] = image[(y * W + x) * 4 + 1] = image[(y * W + x) * 4 + 2] = 250; return image; };
+  const box = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 };
+  assert.equal(boxHoldsChange(blank(), blank(), W, H, box), true);
+  assert.equal(boxHoldsChange(blank(), paint(blank(), 14, 8, 26, 12), W, H, box), true);
+  assert.equal(boxHoldsChange(blank(), paint(blank(), 0, 0, 30, 20), W, H, box), false);
+  const corner = { x: 0.5, y: 0.5, w: 0.5, h: 0.5 };
+  assert.equal(boxHoldsChange(blank(), paint(blank(), 26, 14, 40, 20), W, H, corner), true);
+});
+test('an edit that moves or resizes something is not boxed', () => {
+  const { refinePrompt } = load('src/lib/thumbnail/prompt.ts');
+  assert.match(refinePrompt('Make the character smaller'), /whole if the change moves, resizes, turns or re-poses anything/);
+});
+test('avatars keep the clean in-game look in thumbnails, icons and edits', () => {
+  const { refinePrompt } = load('src/lib/thumbnail/prompt.ts');
+  const look = /AVATAR LOOK: Avatars stay as clean and simple as a real in-game Roblox render/;
+  assert.match(forImageTool(thumbnailPrompt(parseThumbnailBrief(brief))), look);
+  assert.match(forImageTool(thumbnailPrompt(parseThumbnailBrief({ ...brief, icon: true }))), look);
+  assert.match(refinePrompt('Fix the avatar'), look);
+  assert.doesNotMatch(forImageTool(thumbnailPrompt(parseThumbnailBrief({ ...brief, references: [image] }))), /same rendering technique as the rest of the image/);
 });
 test('reference download only accepts HTTPS Roblox CDN hosts', () => {
   assert.equal(isRobloxImageUrl('https://tr.rbxcdn.com/example.png'), true);

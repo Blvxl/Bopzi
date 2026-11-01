@@ -378,7 +378,7 @@ function ImageSection({ layer, up, prot }: { layer: ImageLayer; up: Up; prot: bo
 
   return (
     <Section title="Image">
-      {asset === 'missing' && <p className="note is-error">The source file for this layer is no longer in this browser&apos;s storage. Replace the image to fix it.</p>}
+      {asset === 'missing' && <p className="note is-error">The source file for this layer is no longer on this computer&apos;s storage. Replace the image to fix it.</p>}
       {record && (
         <p className="break-all text-xs leading-relaxed text-ui-dim">
           {record.name}
@@ -390,7 +390,7 @@ function ImageSection({ layer, up, prot }: { layer: ImageLayer; up: Up; prot: bo
         <p className="note is-warn">This file has a solid background, so it shows as a rectangle. Remove the background to keep only the subject.</p>
       )}
       {!layer.arrow && (
-        <button type="button" className="ebtn w-full" disabled={!record || !!s.cutting} aria-busy={s.cutting === layer.id} title="Keeps the subject and makes the rest see-through. Runs in this browser; the image is not uploaded." onClick={() => void s.cutout(layer.id)}>
+        <button type="button" className="ebtn w-full" disabled={!record || !!s.cutting} aria-busy={s.cutting === layer.id} title="Keeps the subject and makes the rest see-through. Runs on this computer; the image is not uploaded." onClick={() => void s.cutout(layer.id)}>
           {s.cutting === layer.id ? <><i className="spinner" /> {s.cutStatus}</> : <><Eraser size={14} /> Remove background</>}
         </button>
       )}

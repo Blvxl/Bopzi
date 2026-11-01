@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bopzi: Roblox thumbnails that get the click</title>
+<meta name="description" content="A creative studio for Roblox game thumbnails and icons, in your browser.">
+<meta property="og:title" content="Bopzi">
+<meta property="og:description" content="A creative studio for Roblox game thumbnails and icons, in your browser.">
+<meta property="og:image" content="img/made-dig.webp">
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<style>
+  :root { --bg:#111110; --card:#1b1b1a; --line:#ffffff1c; --fg:#f6f5f2; --dim:#a8a39d; --accent:#ff704c; }
+  * { box-sizing:border-box; margin:0; }
+  html { -webkit-text-size-adjust:100%; }
+  body { background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  img { display:block; width:100%; height:auto; }
+  .wrap { width:min(1120px,100%); margin:0 auto; padding:0 24px; }
+  nav { display:flex; align-items:center; justify-content:space-between; height:68px; }
+  .brand { display:flex; align-items:center; gap:9px; font-size:21px; font-weight:800; letter-spacing:-.06em; }
+  .brand img { width:27px; }
+  .brand span { color:#ff947d; }
+  .brand:focus-visible { outline:2px solid #ff896c; outline-offset:3px; }
+  .hero { padding:clamp(56px,10vh,104px) 0 clamp(40px,7vh,64px); text-align:center; }
+  h1 { font-size:clamp(42px,7vw,84px); font-weight:700; line-height:1.03; letter-spacing:-.042em; }
+  h1 em { color:var(--accent); font-style:normal; }
+  .hero p { max-width:560px; margin:20px auto 0; color:var(--dim); font-size:clamp(17px,1.6vw,20px); line-height:1.45; }
+  .gallery { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:clamp(12px,1.6vw,20px); }
+  .gallery img { aspect-ratio:16/9; object-fit:cover; border-radius:16px; }
+  .gallery img:nth-child(-n+2) { grid-column:span 3; }
+  .gallery img:nth-child(n+3) { grid-column:span 2; }
+  section { padding-top:clamp(72px,11vw,128px); }
+  h2 { font-size:clamp(30px,4vw,46px); font-weight:700; line-height:1.08; letter-spacing:-.035em; }
+  .points { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(20px,3vw,36px); margin-top:32px; }
+  h3 { font-size:19px; font-weight:650; letter-spacing:-.015em; }
+  .points p { margin-top:6px; color:var(--dim); }
+  .access { margin-top:clamp(72px,11vw,128px); padding:clamp(36px,6vw,64px); border:1px solid var(--line); border-radius:20px; background:var(--card); text-align:center; }
+  .access p { max-width:520px; margin:12px auto 0; color:var(--dim); }
+  footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px 24px; padding:40px 0 32px; color:#8f8a84; font-size:14px; }
+  @media (max-width:760px) {
+    .points { grid-template-columns:1fr; }
+    .gallery img, .gallery img:nth-child(-n+2), .gallery img:nth-child(n+3) { grid-column:span 6; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="./"><img src="img/icon.svg" alt="" width="27" height="27">bopzi<span>.</span></a>
+  </nav>
+  <header class="hero">
+    <h1>Roblox thumbnails<br>that get the <em>click.</em></h1>
+    <p>Describe your game and Bopzi draws it with your own ChatGPT plan. Finish it with text and layers, in your browser.</p>
+  </header>
+  <div class="gallery">
+    <img src="img/made-dig.webp" alt="An avatar digs up treasure and a fossil worth millions" width="1920" height="1080">
+    <img src="img/auction.webp" alt="Two avatars bid on a glowing ban hammer at an auction" width="1280" height="720" loading="lazy">
+    <img src="img/treasure.webp" alt="An avatar opens a garage full of gold" width="1280" height="720" loading="lazy">
+    <img src="img/lava.webp" alt="A blocky avatar leaps over lava in an obby" width="1920" height="1080" loading="lazy">
+    <img src="img/made-drill.webp" alt="An avatar drills through dirt towards a golden smiley" width="1920" height="1080" loading="lazy">
+  </div>
+  <section>
+    <h2>Made for Roblox creators.</h2>
+    <div class="points">
+      <div><h3>Describe it</h3><p>A sentence is enough. Add your avatar or a game screenshot if you want.</p></div>
+      <div><h3>Change it in plain words</h3><p>Say what should be different, and every change is kept as a version.</p></div>
+      <div><h3>See it like players do</h3><p>Check your thumbnail the way it appears on Roblox before you publish.</p></div>
+    </div>
+  </section>
+  <section>
+    <h2>Free to use.</h2>
+    <p style="margin-top:12px;color:var(--dim)">Connect your own ChatGPT plan for AI images. Everything else costs nothing.</p>
+  </section>
+  <div class="access">
+    <h2>Make your first thumbnail.</h2>
+    <p>Open Bopzi in your browser. Free, with your own ChatGPT plan for AI images.</p>
+  </div>
+  <footer>
+    <span>Bopzi</span>
+    <span>Not affiliated with Roblox Corporation or OpenAI.</span>
+  </footer>
+</div>
+</body>
+</html>

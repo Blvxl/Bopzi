@@ -1,8 +1,8 @@
 {
   "name": "bopzi-desktop",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "private": true,
-  "description": "Personal video and thumbnail studio",
+  "description": "Roblox thumbnail and icon studio",
   "author": "Bopzi",
   "main": "main.cjs",
   "devDependencies": {

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
 
-// A personal tool: nothing here is for a crawler.
+// The marketing pages are public; the tool behind them is not for crawlers.
 export default function robots(): MetadataRoute.Robots {
-  return { rules: { userAgent: '*', disallow: '/' } };
+  return { rules: { userAgent: '*', allow: '/', disallow: ['/api/', '/studio', '/projects', '/account', '/video'] }, sitemap: `${SITE_URL}/sitemap.xml` };
 }

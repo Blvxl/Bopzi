@@ -253,6 +253,21 @@ export async function codexAsk({ question, images = [], signal, timeoutMs = 150_
   }
 }
 
+/** Tried in order. The backend currently accepts any name, so the second only matters if it starts checking. */
+export const IMAGE_MODELS = ['gpt-image-2.5-sunburst', 'gpt-image-2'];
+// A safety refusal is about the image, so another model must never be tried for it.
+export const modelRefused = (status, detail) => (status === 400 || status === 403 || status === 404) && /model/i.test(String(detail ?? '')) && !/safety/i.test(String(detail ?? ''));
+
+/** What to tell someone when ChatGPT refuses an image. */
+export function imageFailure(status, detail) {
+  if (status === 401 || status === 403) return 'Codex could not use the ChatGPT image generation entitlement. Reconnect in Codex, check your plan access, then try again.';
+  if (status === 429) return "You've reached your ChatGPT image limit for now. Try again later, or check your plan.";
+  if (modelRefused(status, detail)) return 'ChatGPT no longer accepts the image models this version of Bopzi uses. Update Bopzi, then try again.';
+  if (status === 404) return 'ChatGPT moved the image service this version of Bopzi uses. Update Bopzi, then try again.';
+  if (status >= 500) return 'ChatGPT image generation is having problems right now. Try again in a few minutes.';
+  return typeof detail === 'string' ? `ChatGPT image generation failed: ${detail.slice(0, 300)}` : `ChatGPT image generation failed (HTTP ${status}).`;
+}
+
 /**
  * Generates an image through the ChatGPT subscription signed into Codex.
  * @param {{ prompt: string, images?: string[], look?: string[], notes?: string, shape?: 'wide' | 'square', signal?: AbortSignal, timeoutMs?: number, onScene?: (scene: string) => void }} job
@@ -262,7 +277,7 @@ export async function codexAsk({ question, images = [], signal, timeoutMs = 150_
  *   `notes` is an optional follow-up question about the generated image; its answer comes back as text.
  * @returns {Promise<{ image: string, notes: string }>} the image as base64 PNG data, and the notes if any were written
  */
-export async function codexImage({ prompt, images = [], look = [], notes = '', shape = 'wide', model = 'gpt-image-2.5-sunburst', signal, timeoutMs = 280_000, onScene }) {
+export async function codexImage({ prompt, images = [], look = [], notes = '', shape = 'wide', model, signal, timeoutMs = 280_000, onScene }) {
   const status = await codexStatus();
   if (!status.connected) throw new Error(status.reason);
   if (signal?.aborted) throw new Error('Cancelled.');
@@ -311,32 +326,31 @@ export async function codexImage({ prompt, images = [], look = [], notes = '', s
     const endpoint = `https://chatgpt.com/backend-api/codex/images/${refs.length ? 'edits' : 'generations'}`;
     const body = {
       prompt: `${finalPrompt}\n\nOutput aspect ratio: ${shape === 'square' ? '1:1 square' : '16:9 landscape'}.`,
-      model,
       n: 1,
       quality: 'high',
       size: shape === 'square' ? '1024x1024' : '1536x864',
       ...(refs.length ? { images: refs } : {}),
     };
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'ChatGPT-Account-ID': accountId,
-        'OAI-Product-Sku': 'codex',
-        'x-codex-image-turn-id': randomUUID(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-      redirect: 'error',
-      cache: 'no-store',
-    });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      const detail = payload?.error?.message ?? payload?.message;
-      if (response.status === 401 || response.status === 403) throw new Error('Codex could not use the ChatGPT image generation entitlement. Reconnect in Codex, check your plan access, then try again.');
-      throw new Error(typeof detail === 'string' ? `ChatGPT image generation failed: ${detail.slice(0, 300)}` : `ChatGPT image generation failed (HTTP ${response.status}).`);
+    let response, payload;
+    for (const candidate of model ? [model] : IMAGE_MODELS) {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'ChatGPT-Account-ID': accountId,
+          'OAI-Product-Sku': 'codex',
+          'x-codex-image-turn-id': randomUUID(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...body, model: candidate }),
+        signal: controller.signal,
+        redirect: 'error',
+        cache: 'no-store',
+      });
+      payload = await response.json().catch(() => null);
+      if (!modelRefused(response.status, payload?.error?.message ?? payload?.message)) break;
     }
+    if (!response.ok) throw new Error(imageFailure(response.status, payload?.error?.message ?? payload?.message));
     const encoded = payload?.data?.[0]?.b64_json;
     if (typeof encoded !== 'string' || !encoded.length) throw new Error('ChatGPT image generation finished without returning an image. Try again.');
     const image = encoded;
