@@ -1,4 +1,5 @@
 import { fetchImage } from './fetch-image';
+import { robloxFetch } from './roblox-fetch';
 
 export type ReferenceGame = {
   id: number;
@@ -48,13 +49,13 @@ export async function referenceCatalog(): Promise<Catalog> {
   pending = (async () => {
     const ids = SEEDS.map(([id]) => id).join(',');
     const responses = await Promise.all([
-      fetch(`https://games.roblox.com/v1/games?universeIds=${ids}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }),
-      fetch(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${ids}&countPerUniverse=1&defaults=false&size=768x432&format=Png&isCircular=false`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }),
+      robloxFetch(`https://games.roblox.com/v1/games?universeIds=${ids}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }),
+      robloxFetch(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${ids}&countPerUniverse=1&defaults=false&size=768x432&format=Png&isCircular=false`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }),
     ]);
     if (responses.some(r => !r.ok)) throw new Error('Roblox references are temporarily unavailable.');
     const [details, thumbnails] = await Promise.all(responses.map(r => r.json()));
     // Nice to have: the library still works without them.
-    const extra = (url: string) => fetch(url, { signal: AbortSignal.timeout(15000), cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    const extra = (url: string) => robloxFetch(url, { signal: AbortSignal.timeout(15000), cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
     const [votes, icons] = await Promise.all([
       extra(`https://games.roblox.com/v1/games/votes?universeIds=${ids}`) as Promise<{ data?: { id: number; upVotes: number; downVotes: number }[] } | null>,
       extra(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${ids}&returnPolicy=PlaceHolder&size=256x256&format=Png&isCircular=false`) as Promise<{ data?: { targetId: number; state: string; imageUrl: string }[] } | null>,
@@ -102,7 +103,7 @@ const searches = new Map<string, { at: number; games: ReferenceGame[] }>();
 async function thumbnailsFor(ids: number[]) {
   const out = new Map<number, string>();
   if (!ids.length) return out;
-  const res = await fetch(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${ids.join(',')}&countPerUniverse=1&defaults=false&size=768x432&format=Png&isCircular=false`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
+  const res = await robloxFetch(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${ids.join(',')}&countPerUniverse=1&defaults=false&size=768x432&format=Png&isCircular=false`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
   if (!res.ok) return out;
   const body = (await res.json()) as { data?: { universeId: number; thumbnails?: { state: string; imageUrl: string }[] }[] };
   for (const g of body.data ?? []) {
@@ -120,7 +121,7 @@ export async function searchGames(query: string): Promise<ReferenceGame[]> {
   const hit = searches.get(key);
   if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.games;
 
-  const res = await fetch(`https://apis.roblox.com/search-api/omni-search?searchQuery=${encodeURIComponent(q)}&sessionId=${crypto.randomUUID()}&pageType=all`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
+  const res = await robloxFetch(`https://apis.roblox.com/search-api/omni-search?searchQuery=${encodeURIComponent(q)}&sessionId=${crypto.randomUUID()}&pageType=all`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
   if (!res.ok) throw new Error('Roblox search is temporarily unavailable.');
   type Hit = { universeId?: number; name?: string; rootPlaceId?: number; isSponsored?: boolean; minimumAge?: number };
   const body = (await res.json()) as { searchResults?: { contentGroupType?: string; contents?: Hit[] }[] };
@@ -150,7 +151,7 @@ export async function gameById(id: number): Promise<ReferenceGame | null> {
   const known = found.get(id);
   if (known) return known;
   const [details, images] = await Promise.all([
-    fetch(`https://games.roblox.com/v1/games?universeIds=${id}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as Promise<{ data?: { id: number; name: string; rootPlaceId: number }[] } | null>,
+    robloxFetch(`https://games.roblox.com/v1/games?universeIds=${id}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as Promise<{ data?: { id: number; name: string; rootPlaceId: number }[] } | null>,
     thumbnailsFor([id]),
   ]);
   const game = details?.data?.[0];
@@ -164,7 +165,7 @@ export async function gameById(id: number): Promise<ReferenceGame | null> {
 /** Resolves a game from the place id in its roblox.com/games/<id> link. */
 export async function gameByPlace(placeId: number): Promise<ReferenceGame | null> {
   if (!Number.isSafeInteger(placeId) || placeId <= 0) return null;
-  const res = await fetch(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }).catch(() => null);
+  const res = await robloxFetch(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`, { signal: AbortSignal.timeout(15000), cache: 'no-store' }).catch(() => null);
   const universeId = res?.ok ? ((await res.json()) as { universeId?: number | null }).universeId : null;
   return universeId ? gameById(universeId) : null;
 }
@@ -179,7 +180,7 @@ export async function dealGame(text: string): Promise<DealGame | null> {
   if (!place) return null;
   const known = dealGames.get(place);
   if (known && Date.now() - known.at < DEAL_GAME_AGE) return known.game;
-  const read = <T,>(url: string) => fetch(url, { signal: AbortSignal.timeout(8000), cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<T> : null)).catch(() => null);
+  const read = <T,>(url: string) => robloxFetch(url, { signal: AbortSignal.timeout(8000), cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<T> : null)).catch(() => null);
   const universe = await read<{ universeId?: number | null }>(`https://apis.roblox.com/universes/v1/places/${place}/universe`);
   const id = universe?.universeId;
   if (!id) return known?.game ?? null;
@@ -209,7 +210,7 @@ export async function arrangementReferences(query: string, signal: AbortSignal):
   const games = ranked.slice(0, 5).map(g => g.game);
   if (!games.length) return [];
   const url = 'https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=' + games.map(g => g.id).join(',') + '&countPerUniverse=3&defaults=false&size=768x432&format=Png&isCircular=false';
-  const res = await fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]), cache: 'no-store' });
+  const res = await robloxFetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]), cache: 'no-store' });
   if (!res.ok) throw new Error('Roblox thumbnails are temporarily unavailable.');
   const body = await res.json() as { data?: { universeId: number; thumbnails?: { state: string; imageUrl: string }[] }[] };
   const candidates: { game: ReferenceGame; url: string }[] = [];

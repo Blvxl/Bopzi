@@ -1,5 +1,6 @@
 import { imageMime, isRobloxImageUrl } from './references';
 import { fetchImage } from './fetch-image';
+import { robloxFetch } from './roblox-fetch';
 
 /**
  * A real avatar gives the image model something authentic to redraw, instead of inventing a cartoon lookalike.
@@ -14,9 +15,9 @@ export type AvatarReference = { name: string; data: string };
 /** The user a profile link points at. The number in the link is all that is used. */
 async function userById(id: number) {
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('That is not a Roblox profile link.');
-  const res = await fetch(`https://users.roblox.com/v1/users/${id}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
+  const res = await robloxFetch(`https://users.roblox.com/v1/users/${id}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
   if (res.status === 404) throw new Error('That Roblox profile was not found.');
-  if (!res.ok) throw new Error('Roblox could not be reached. Try again in a moment.');
+  if (!res.ok) throw new Error(`Roblox could not be reached (error ${res.status}). Try again in a moment.`);
   const user = (await res.json()) as { id?: number; name?: string; isBanned?: boolean };
   if (!user.id || !user.name || user.isBanned) throw new Error('That Roblox profile was not found.');
   return { id: user.id, name: user.name };
@@ -26,14 +27,14 @@ async function userByName(username: string) {
   const wanted = username.trim().replace(/^@/, '');
   if (!USERNAME.test(wanted)) throw new Error('Enter a Roblox username: 3 to 20 letters, numbers or underscores.');
 
-  const lookup = await fetch('https://users.roblox.com/v1/usernames/users', {
+  const lookup = await robloxFetch('https://users.roblox.com/v1/usernames/users', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ usernames: [wanted], excludeBannedUsers: true }),
     signal: AbortSignal.timeout(15000),
     cache: 'no-store',
   });
-  if (!lookup.ok) throw new Error('Roblox could not be reached. Try again in a moment.');
+  if (!lookup.ok) throw new Error(`Roblox could not be reached (error ${lookup.status}). Try again in a moment.`);
   const user = ((await lookup.json()) as { data?: { id: number; name: string }[] }).data?.[0];
   if (!user) throw new Error(`No Roblox user called "${wanted}" was found.`);
   return user;
@@ -47,7 +48,7 @@ export async function avatarReference(who: { username?: string; userId?: number 
   let imageUrl = '';
   for (let attempt = 0; attempt < 4 && !imageUrl; attempt++) {
     if (attempt) await wait(900);
-    const res = await fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${user.id}&size=720x720&format=Png&isCircular=false`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
+    const res = await robloxFetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${user.id}&size=720x720&format=Png&isCircular=false`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
     if (!res.ok) continue;
     const thumb = ((await res.json()) as { data?: { state: string; imageUrl: string }[] }).data?.[0];
     if (thumb?.state === 'Blocked') throw new Error('Roblox has not approved that avatar for display.');

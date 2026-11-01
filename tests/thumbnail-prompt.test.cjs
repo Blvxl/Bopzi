@@ -11,7 +11,7 @@ function load(file, resolve = require) {
 }
 const { thumbnailPrompt, parseThumbnailBrief } = load('src/lib/thumbnail/prompt.ts');
 // references.ts imports its image fetcher; these tests never fetch, so a stand-in is enough.
-const { isRobloxImageUrl, imageMime } = load('src/lib/thumbnail/references.ts', (id) => (id === './fetch-image' ? { fetchImage: () => { throw new Error('not used here'); } } : require(id)));
+const { isRobloxImageUrl, imageMime } = load('src/lib/thumbnail/references.ts', (id) => (id === './fetch-image' ? { fetchImage: () => { throw new Error('not used here'); } } : id === './roblox-fetch' ? { robloxFetch: () => { throw new Error('not used here'); } } : require(id)));
 const brief = { scene: 'An avatar leaps across a lava obby checkpoint.', style: 'gfx', title: '', references: [] };
 const image = 'data:image/png;base64,aGVsbG8=';
 test('reference order separates identity images from style inspiration', () => {
