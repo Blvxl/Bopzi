@@ -9,6 +9,7 @@
 
 import http from 'node:http';
 import { codexAsk, codexImage, codexStatus } from './codex-core.mjs';
+import { robloxAvatar, robloxImage } from './roblox.mjs';
 
 const PORT = Number(process.env.BOPZI_HELPER_PORT ?? 47615);
 const origins = new Set(['http://localhost:3000']);
@@ -75,6 +76,16 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       line({ error: e instanceof Error ? e.message : 'The image could not be made.' });
     } finally { busy = false; res.end(); }
+    return;
+  }
+  // Roblox lookups from this computer: web hosts share addresses that Roblox limits, a home connection does not.
+  if (req.method === 'POST' && (route === '/roblox/avatar' || route === '/roblox/image')) {
+    let raw = '';
+    for await (const chunk of req) { raw += chunk; if (raw.length > 10_000) { reply(res, origin, 413, { error: 'The request is too large.' }); return; } }
+    let job;
+    try { job = JSON.parse(raw); } catch { reply(res, origin, 400, { error: 'Invalid request.' }); return; }
+    try { reply(res, origin, 200, route === '/roblox/avatar' ? await robloxAvatar(job) : await robloxImage(job?.url)); }
+    catch (e) { reply(res, origin, 400, { error: e instanceof Error ? e.message : 'Roblox could not be reached.' }); }
     return;
   }
   // A question about a picture, answered in words. No image is made.

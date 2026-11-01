@@ -261,6 +261,12 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
       return result as { image: string; notes?: string };
     };
     if (connection?.via === 'helper') {
+      // A game picked as inspiration is downloaded by the helper (Roblox limits the web host), then sent along as a picture.
+      const wanted = (payload as { styleReferenceId?: number }).styleReferenceId;
+      if (wanted && selectedGame?.imageUrl) {
+        const got = await fetch(`${HELPER}/roblox/image`, { method: 'POST', headers: { 'content-type': 'application/json' }, signal, body: JSON.stringify({ url: selectedGame.imageUrl }) }).then((r) => r.json() as Promise<{ data?: string; error?: string }>).catch(() => null);
+        if (got?.data) payload = { ...payload, styleReferenceId: undefined, styleReference: got.data };
+      }
       // Bopzi works out the request; the helper on this computer makes the image with the visitor's own Codex.
       const job = await read(await post('/api/thumbnail/prepare', payload, true), 'The studio could not prepare the request. Try again in a moment.');
       const made = await read(await post(`${HELPER}/generate`, job, false).catch(e => { if (signal.aborted) throw e; throw new Error('The Bopzi helper stopped answering. Check that it is still running.'); }), 'The helper could not make the image.');
@@ -602,7 +608,9 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
     if (references.length >= MAX_IMAGES) { setError(`A thumbnail can use up to ${MAX_IMAGES} of your images. Remove one to add another.`); return; }
     setError(''); setAvatarBusy(true);
     try {
-      const res = await fetch('/api/thumbnail/avatar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(who) });
+      // On the website the helper on this computer asks Roblox, because Roblox limits the web host's shared address.
+      const viaHelper = connection?.via === 'helper';
+      const res = await fetch(viaHelper ? `${HELPER}/roblox/avatar` : '/api/thumbnail/avatar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(who) }).catch(() => { throw new Error(viaHelper ? 'Start the Bopzi helper first, then try again. The avatar is fetched from your own computer.' : 'That avatar could not be loaded. Try again in a moment.'); });
       const body = await res.json().catch(() => null);
       if (!res.ok || !body?.data) throw new Error(body?.error || 'That avatar could not be loaded. Try again in a moment.');
       setReferences(v => [...v, { name: `${body.name}-avatar.png`, data: body.data, label: 'My avatar', role: 'character' as Role }].slice(0, MAX_IMAGES));

@@ -28,6 +28,15 @@ test('the downloaded helper starts alone and only answers its own site', async (
     const ok = await fetch(`http://127.0.0.1:${port}/status`, { headers: { origin: 'https://bopzi.test' } });
     assert.equal(ok.status, 200);
     assert.equal((await ok.json()).helper, 1);
+    // Roblox lookups from this computer: bad input is refused before anything leaves the machine.
+    const post = (route, body, origin = 'https://bopzi.test') => fetch(`http://127.0.0.1:${port}${route}`, { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const notRoblox = await post('/roblox/image', { url: 'https://evil.example/x.png' });
+    assert.equal(notRoblox.status, 400);
+    assert.match((await notRoblox.json()).error, /not a Roblox image/);
+    const shortName = await post('/roblox/avatar', { username: 'ab' });
+    assert.equal(shortName.status, 400);
+    assert.match((await shortName.json()).error, /3 to 20 letters/);
+    assert.equal((await post('/roblox/avatar', { username: 'Roblox' }, 'https://evil.example')).status, 403);
     const other = await fetch(`http://127.0.0.1:${port}/status`, { headers: { origin: 'https://evil.example' } });
     assert.equal(other.status, 403);
   } finally {
