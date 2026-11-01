@@ -224,11 +224,27 @@ function AdminPanel() {
 /** The free website account: who is signed in, and how to leave. */
 function WebsiteAccount() {
   const [email, setEmail] = useState('');
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState('');
+  const remove = async () => {
+    setBusy(true); setProblem('');
+    const res = await fetch('/api/account/delete', { method: 'POST', headers: { 'x-bopzi-local': '1' } }).catch(() => null);
+    const reply = (await res?.json().catch(() => ({}))) as { ok?: boolean; error?: string } | undefined;
+    if (reply?.ok) { window.location.assign('/'); return; }
+    setProblem(reply?.error ?? 'The account could not be deleted. Try again or contact support.');
+    setBusy(false);
+  };
   useEffect(() => { void supabaseBrowser().auth.getUser().then(({ data }: { data: { user: { email?: string } | null } }) => setEmail(data.user?.email ?? '')); }, []);
   return (
     <main className="adm">
       <header className="adm-head"><div><h1>Account</h1><p>{email ? `Signed in as ${email}` : ' '}</p></div><button type="button" className="adm-go" onClick={() => void logOut()}>Log out</button></header>
-      <p className="adm-note">Bopzi is free. Your e-mail address is stored by our sign-in provider, Supabase, so you can log in. Your projects stay in this browser. Need help or want your account removed? {HELP_TEXT}.</p>
+      <p className="adm-note">Bopzi is free. Your e-mail address is stored by our sign-in provider, Supabase, so you can log in. Your projects stay in this browser. Need help? {HELP_TEXT}.</p>
+      {!asking ? <button type="button" className="adm-danger" onClick={() => setAsking(true)}>Delete my account</button> : <div className="adm-confirm" role="alertdialog" aria-label="Delete your account">
+        <p><b>Delete your account?</b> Your e-mail and login are removed for good. Projects saved in this browser stay here until you clear them.</p>
+        {problem && <p className="adm-error" role="alert">{problem}</p>}
+        <div><button type="button" disabled={busy} onClick={() => setAsking(false)}>Cancel</button><button type="button" className="adm-danger" disabled={busy} onClick={() => void remove()}>{busy ? 'Deleting' : 'Yes, delete it'}</button></div>
+      </div>}
     </main>
   );
 }

@@ -77,3 +77,11 @@
 .adm-modal .adm-percent input { padding-right:30px; }
 .adm-percent i { position:absolute; top:50%; right:13px; color:#8f8a84; font-style:normal; font-size:15px; transform:translateY(-50%); }
 .adm-modal input[type=date] { color-scheme:dark; }
+
+.adm-danger { min-height:44px; margin-top:28px; padding:0 18px; border:1px solid #ff5a4a55; border-radius:12px; background:none; color:#ff8d80; font:600 15px/1 var(--font-sans); cursor:pointer; }
+.adm-danger:hover:not(:disabled) { background:#ff5a4a1a; }
+.adm-confirm { display:grid; gap:14px; max-width:520px; margin-top:28px; padding:18px; border:1px solid #ff5a4a40; border-radius:14px; background:#ff5a4a0d; color:var(--color-ivory-dim); font-size:15px; line-height:1.5; }
+.adm-confirm b { color:var(--color-ivory); }
+.adm-confirm div { display:flex; gap:10px; flex-wrap:wrap; }
+.adm-confirm div button { min-height:44px; padding:0 16px; border:1px solid #ffffff22; border-radius:12px; background:none; color:var(--color-ivory); font:600 15px/1 var(--font-sans); cursor:pointer; }
+.adm-confirm .adm-danger { margin-top:0; border-color:#ff5a4a66; color:#ff8d80; }
