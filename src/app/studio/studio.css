@@ -948,3 +948,26 @@ button.take-tile:active { transform:scale(.99); }
 .gen-sub .gen-tip { color:var(--color-ui-fg); opacity:.85; animation:gen-tip-in .5s ease-out both; }
 @keyframes gen-tip-in { from { opacity:0; transform:translateY(3px); } to { opacity:.85; transform:none; } }
 @media (prefers-reduced-motion:reduce) { .gen-sub .gen-tip { animation:none; } }
+
+/* The wait in the connection guide: a pulse, what for, how long */
+.cg-wait { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:12px; background:linear-gradient(135deg,#ffffff0d,#ffffff06); box-shadow:inset 0 0 0 1px #ffffff12; }
+.cg-wait > div { min-width:0; flex:1; display:grid; gap:2px; }
+.cg-wait b { font-size:15px; font-weight:600; color:#f3ede2; }
+.cg-wait small { font-size:13px; line-height:1.45; color:#a39c91; }
+.cg-wait time { flex:none; font:500 13px/1 var(--font-mono, ui-monospace, monospace); color:#8a8378; font-variant-numeric:tabular-nums; }
+.cg-pulse { position:relative; flex:none; display:grid; place-items:center; width:28px; height:28px; }
+.cg-pulse i { position:absolute; inset:7px; border-radius:50%; background:#ffb34f; }
+.cg-pulse i + i { inset:0; background:none; box-shadow:0 0 0 2px #ffb34f; animation:cg-ring 1.6s ease-out infinite; }
+@keyframes cg-ring { from { transform:scale(.45); opacity:.9; } to { transform:scale(1); opacity:0; } }
+.cg-live { display:grid; gap:8px; margin:2px 0 0; padding:14px 16px; list-style:none; border-radius:12px; background:#ffffff0a; box-shadow:inset 0 0 0 1px #ffffff12; }
+.cg-live li { display:flex; align-items:center; gap:12px; padding:0; border:0; font-size:15px; color:#8a8378; transition:color .25s ease; }
+.cg-live li > span { position:relative; flex:none; display:grid; place-items:center; width:22px; height:22px; border-radius:50%; box-shadow:inset 0 0 0 1.5px #ffffff2e; transition:background .25s ease, box-shadow .25s ease; }
+.cg-live li.is-done { color:#c9c1b4; }
+.cg-live li.is-done > span { background:#3ecf8e; color:#0c0b0a; box-shadow:none; }
+.cg-live li.is-now { color:#f3ede2; font-weight:600; }
+.cg-live li.is-now > span { box-shadow:inset 0 0 0 1.5px #ffb34f; }
+.cg-live li.is-now > span i { width:8px; height:8px; border-radius:50%; background:#ffb34f; animation:cg-dot 1.2s ease-in-out infinite; }
+@keyframes cg-dot { 50% { opacity:.35; transform:scale(.8); } }
+.cg-inline { display:block; margin-top:8px; }
+.cg-inline .cg-button { height:38px; font-size:14px; }
+@media (prefers-reduced-motion:reduce) { .cg-pulse i + i, .cg-live li.is-now > span i { animation:none; } }

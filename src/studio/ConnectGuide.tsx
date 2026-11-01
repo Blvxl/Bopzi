@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Check, Copy, Download, ExternalLink, RefreshCw, X } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, ExternalLink, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Link } from './imageRoute';
 
@@ -14,10 +14,45 @@ type Card = {
   action?: React.ReactNode;
   /** A card that checks itself shows what it is waiting for and moves on alone. */
   waiting?: string;
+  /** Checks that tick themselves off, shown in place of a plain waiting line. */
+  live?: { label: string; state: 'done' | 'now' | 'later' }[];
   problem?: React.ReactNode;
   done: boolean;
   manual: boolean;
 };
+
+/** The wait itself: a pulse, what is being waited for, how long, and a nudge when it takes too long. */
+function Waiting({ title, hint }: { title: string; hint?: string }) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="cg-wait" role="status" aria-live="polite">
+      <span className="cg-pulse" aria-hidden="true"><i /><i /></span>
+      <div>
+        <b>{title}</b>
+        <small>{seconds >= 45 ? 'Still nothing? Look at the black window for a red message.' : hint ?? 'This page checks for you every few seconds.'}</small>
+      </div>
+      <time aria-label={`${seconds} seconds`}>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</time>
+    </div>
+  );
+}
+
+/** Steps that tick themselves off: done, happening now, or still to come. */
+function Live({ rows }: { rows: { label: string; state: 'done' | 'now' | 'later' }[] }) {
+  return (
+    <ul className="cg-live" role="status" aria-live="polite">
+      {rows.map((row) => (
+        <li key={row.label} className={`is-${row.state}`}>
+          <span aria-hidden="true">{row.state === 'done' ? <Check size={13} /> : row.state === 'now' ? <i /> : null}</span>
+          {row.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 const isMac = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
@@ -31,6 +66,7 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [cursor, setCursor] = useState<number | null>(null);
   const [opened, setOpened] = useState(false);
+  const [sawOutdated, setSawOutdated] = useState(false);
 
   useEffect(() => {
     // Keeps asking even while the browser blocks the page, so it notices the moment someone clicks Allow.
@@ -38,6 +74,11 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
     const timer = setInterval(() => void onCheck(), 3000);
     return () => clearInterval(timer);
   }, [link.connected, onCheck]);
+  useEffect(() => { if (link.helperOutdated) setSawOutdated(true); }, [link.helperOutdated]);
+  // Once the helper has been seen, the welcome card never comes back, even while the helper is restarted.
+  useEffect(() => { if (link.helperUp || link.connected) setStarted(true); }, [link.helperUp, link.connected]);
+  // Once the helper has answered, the first three questions stay answered, even while it is restarted.
+  useEffect(() => { if (link.helperUp || link.connected) setConfirmed((c) => ({ ...c, plan: true, node: true, file: true })); }, [link.helperUp, link.connected]);
   // When the helper or Codex answers, the guide follows by itself even if someone had stepped back.
   useEffect(() => { setCursor(null); }, [link.helperUp, link.connected]);
   useEffect(() => {
@@ -135,19 +176,25 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
       manual: true,
     });
     const command = mac ? 'node ~/Downloads/bopzi-helper.mjs' : 'node "%USERPROFILE%\\Downloads\\bopzi-helper.mjs"';
-    if (link.helperOutdated) {
+    if (link.helperOutdated || (sawOutdated && !link.connected)) {
+      const upToDate = link.helperUp && !link.helperOutdated;
+      const closed = !link.helperUp;
       cards.push({
         id: 'update',
         title: 'Update the helper',
-        lead: 'Your helper is an older version. Get the new one and start it again.',
+        lead: 'There is a newer helper. This takes a minute.',
         todo: [
-          <>Close the black helper window.</>,
-          <>Download the new helper and save it over the old one.</>,
-          <>Start it again with the same command as before.</>,
+          <>Get the new file. Save it over the old one.<span className="cg-inline"><a className="cg-button is-go" href="/bopzi-helper.mjs" download="bopzi-helper.mjs"><Download size={14} /> Download the new helper</a></span></>,
+          <>Close the old black window (click its <b>X</b>).</>,
+          mac
+            ? <>Open <b>Terminal</b> again (<b>⌘ Space</b>, type <b>Terminal</b>, <b>Enter</b>) and paste this:{code(command)}</>
+            : <>Open a new black window (<b>Windows key</b>, type <b>cmd</b>, <b>Enter</b>) and paste this:{code(command)}</>,
         ],
-        action: <a className="cg-button is-go" href="/bopzi-helper.mjs" download="bopzi-helper.mjs"><Download size={14} /> Download the new helper</a>,
-        waiting: 'Waiting for the new helper',
-        done: false,
+        live: [
+          { label: 'Old helper closed', state: closed || upToDate ? 'done' : 'now' },
+          { label: 'New helper running', state: upToDate ? 'done' : closed ? 'now' : 'later' },
+        ],
+        done: upToDate || !!link.connected,
         manual: false,
       });
     }
@@ -232,10 +279,9 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
             <p className="cg-lead">{card.lead}</p>
             {card.todo && <ol className="cg-todo">{card.todo.map((line, i) => <li key={i}><span>{i + 1}</span><div>{line}</div></li>)}</ol>}
             {card.action && <div className="cg-actions">{card.action}</div>}
+            {card.live && <Live rows={card.live} />}
             {card.problem && <p className={blocked && card.id === 'run' ? 'cg-warning' : 'cg-help'}>{card.problem}</p>}
-            {card.waiting && (
-              <p className="cg-waiting" role="status"><RefreshCw size={14} aria-hidden="true" /> {card.waiting}<small> · checking automatically</small></p>
-            )}
+            {card.waiting && <Waiting title={card.waiting} hint={card.id === 'run' && link.permission === 'prompt' ? 'If your browser asks, click Allow.' : undefined} />}
             <div className="cg-nav">
               {index > 0 ? <button type="button" className="cg-skip" onClick={() => setCursor(index - 1)}><ArrowLeft size={13} /> Back</button> : <span />}
               <button type="button" className="cg-skip" onClick={onClose}>Use Bopzi without AI</button>
