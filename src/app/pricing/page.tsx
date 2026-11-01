@@ -14,13 +14,13 @@ export default function Pricing() {
   return <div className="home"><main>
     <section className="home-hero" aria-labelledby="pricing-title">
       <h1 id="pricing-title">Bopzi is <em>free.</em></h1>
-      <p>Connect your own ChatGPT plan for AI images with a small helper that runs on your computer. Everything else in the editor, which runs in your browser, costs nothing.</p>
+      <p>Connect your own paid ChatGPT plan for AI images with a small helper that runs on your computer. Everything else in the editor, which runs in your browser, costs nothing.</p>
     </section>
 
     <section className="home-pricing" aria-label="Plan">
       <div className="home-price-card">
         <strong>Free</strong>
-        <ul><li>Full thumbnail and icon editor in your browser</li><li>AI images use your own ChatGPT plan, through a small helper you run on your computer</li><li>Export your work any time</li></ul>
+        <ul><li>Full thumbnail and icon editor in your browser</li><li>AI images use your own paid ChatGPT plan, through a small helper you run on your computer</li><li>Export your work any time</li></ul>
         <Link href="/studio">Get started</Link>
       </div>
       <p className="home-pricing-note">Questions? {HELP_TEXT}.</p>

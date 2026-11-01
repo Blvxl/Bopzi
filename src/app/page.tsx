@@ -25,8 +25,8 @@ const STRUCTURED = JSON.stringify({
 
 const FAQ = [
   { q: 'Do I install anything?', a: 'The editor runs in your browser, nothing to install. AI images currently use a small helper that runs on your computer and connects your own ChatGPT plan.' },
-  { q: 'What do I need?', a: 'A Bopzi account. For AI images, connect your own ChatGPT plan.' },
-  { q: 'What does it cost?', a: 'Bopzi is free. AI images count against your own ChatGPT plan.' },
+  { q: 'What do I need?', a: 'A Bopzi account. For AI images you also need a paid ChatGPT plan (Plus or higher) and a short one-time setup. The editor works without it.' },
+  { q: 'What does it cost?', a: 'Bopzi is free. AI images count against your own paid ChatGPT plan.' },
   { q: 'Can I use it without AI?', a: 'Yes. A blank canvas, your own screenshots and every manual tool work without generating anything.' },
   { q: 'Where do my projects go?', a: 'They stay in this browser. Prompts and reference images are sent to OpenAI only when you generate. Export anything you want to keep.' },
 ];
