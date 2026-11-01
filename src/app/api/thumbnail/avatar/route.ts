@@ -1,5 +1,6 @@
 import { avatarReference } from '@/lib/thumbnail/avatar';
 import { signInRequired } from '@/lib/supabase/require';
+import { callerOf, tooMany } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const denied = await signInRequired();
   if (denied) return denied;
+  if (tooMany(`avatar:${callerOf(req)}`, 30, 60_000)) return Response.json({ error: 'Too many requests. Wait a minute.' }, { status: 429 });
   const body = (await req.json().catch(() => ({}))) as { username?: unknown; userId?: unknown };
   try {
     const who = typeof body.userId === 'number' ? { userId: body.userId } : { username: typeof body.username === 'string' ? body.username : '' };
