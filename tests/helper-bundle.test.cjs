@@ -27,7 +27,12 @@ test('the downloaded helper starts alone and only answers its own site', async (
     assert.match(output, /is running/, `the helper did not start:\n${output}`);
     const ok = await fetch(`http://127.0.0.1:${port}/status`, { headers: { origin: 'https://bopzi.test' } });
     assert.equal(ok.status, 200);
-    assert.equal((await ok.json()).helper, 1);
+    const status = await ok.json();
+    assert.equal(status.helper, 1);
+    assert.ok(status.version >= 3, 'the helper must report a version so the page can ask for a newer one');
+    const who = await fetch(`http://127.0.0.1:${port}/account`, { headers: { origin: 'https://bopzi.test' } });
+    assert.equal(who.status, 200);
+    assert.ok('account' in (await who.json()), 'the account answer has the expected shape');
     // Roblox lookups from this computer: bad input is refused before anything leaves the machine.
     const post = (route, body, origin = 'https://bopzi.test') => fetch(`http://127.0.0.1:${port}${route}`, { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const notRoblox = await post('/roblox/image', { url: 'https://evil.example/x.png' });

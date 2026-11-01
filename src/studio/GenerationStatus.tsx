@@ -1,6 +1,6 @@
 'use client';
 import { Check, TriangleAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStudio } from './context';
 import GenerationDots from './GenerationDots';
 
@@ -13,6 +13,26 @@ const TITLES = {
 };
 const STAGES = ['Reading your idea', 'Drawing', 'Finishing'];
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+// What this browser has actually seen: how long the last few images took. Used to say what to expect.
+const TIMES = 'bopzi:gen-times';
+const readTimes = (): number[] => {
+  try { const v = JSON.parse(localStorage.getItem(TIMES) ?? '[]'); return Array.isArray(v) ? v.filter((n) => Number.isFinite(n)).slice(-5) : []; } catch { return []; }
+};
+const saveTime = (seconds: number) => {
+  try { localStorage.setItem(TIMES, JSON.stringify([...readTimes(), Math.min(600, Math.max(5, Math.round(seconds)))].slice(-5))); } catch { /* the estimate just stays general */ }
+};
+const typicalOf = (times: number[]) => (times.length < 2 ? 0 : [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)]);
+
+// Real habits of thumbnails that read well, shown one at a time while the image is made.
+const TIPS = [
+  'Check your thumbnail at a small size. Most players see it tiny.',
+  'Two or three big words beat a sentence.',
+  'Leave the bottom edge clear. Roblox puts a label there.',
+  'One clear subject beats a busy scene.',
+  'Bright, high-contrast colours stand out in a row of thumbnails.',
+  'Nothing to click while you wait. Keep the helper window open.',
+];
 
 type Props = {
   /** The artboard's box inside the canvas area, so the wait happens where the image will land. */
@@ -30,6 +50,8 @@ type Props = {
 export default function GenerationStatus({ frame, inset, hasArt }: Props) {
   const { generation, setGeneration, isIcon } = useStudio();
   const [elapsed, setElapsed] = useState(0);
+  const [typical] = useState(() => typicalOf(readTimes()));
+  const title = useRef<string | null>(null);
 
   useEffect(() => {
     if (!generation) return;
@@ -38,6 +60,19 @@ export default function GenerationStatus({ frame, inset, hasArt }: Props) {
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
   }, [generation?.startedAt]);
+
+  // The tab says how it is going, so you can work in another tab and still see when it is done.
+  const phaseNow = generation?.phase;
+  useEffect(() => {
+    if (!phaseNow) return;
+    if (title.current === null) title.current = document.title;
+    const working = phaseNow === 'preparing' || phaseNow === 'generating' || phaseNow === 'placing';
+    document.title = working ? `${clock(elapsed)} · Making your image` : phaseNow === 'ready' ? 'Ready · Bopzi' : phaseNow === 'failed' ? 'Did not work · Bopzi' : title.current;
+  }, [phaseNow, elapsed]);
+  useEffect(() => () => { if (title.current !== null) document.title = title.current; }, []);
+  useEffect(() => {
+    if (generation?.phase === 'ready') saveTime((Date.now() - generation.startedAt) / 1000);
+  }, [generation?.phase, generation?.startedAt]);
 
   useEffect(() => {
     if (generation?.phase !== 'ready') return;
@@ -59,9 +94,11 @@ export default function GenerationStatus({ frame, inset, hasArt }: Props) {
       ? (generation.message ?? 'Try again in a moment.')
       : phase === 'ready'
         ? 'Check it at small size, then refine or download.'
-        : elapsed > 90
-          ? 'Still working. Some images take longer.'
-          : 'This can take a minute or two.';
+        : typical
+          ? (elapsed > typical * 1.6 ? 'Taking longer than usual. Still working.' : `Usually about ${clock(typical)} for you.`)
+          : elapsed > 90
+            ? 'Still working. Some images take longer.'
+            : 'This can take a minute or two.';
 
   return (
     <>
@@ -111,6 +148,12 @@ export default function GenerationStatus({ frame, inset, hasArt }: Props) {
             </>
           )}
         </div>
+        {working && (
+          <p className="gen-sub" role="status">
+            <span>{hint}</span>
+            <span className="gen-tip" key={Math.floor(elapsed / 9) % TIPS.length}>{TIPS[Math.floor(elapsed / 9) % TIPS.length]}</span>
+          </p>
+        )}
       </div>
     </>
   );

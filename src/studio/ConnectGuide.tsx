@@ -135,6 +135,22 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
       manual: true,
     });
     const command = mac ? 'node ~/Downloads/bopzi-helper.mjs' : 'node "%USERPROFILE%\\Downloads\\bopzi-helper.mjs"';
+    if (link.helperOutdated) {
+      cards.push({
+        id: 'update',
+        title: 'Update the helper',
+        lead: 'Your helper is an older version. Get the new one and start it again.',
+        todo: [
+          <>Close the black helper window.</>,
+          <>Download the new helper and save it over the old one.</>,
+          <>Start it again with the same command as before.</>,
+        ],
+        action: <a className="cg-button is-go" href="/bopzi-helper.mjs" download="bopzi-helper.mjs"><Download size={14} /> Download the new helper</a>,
+        waiting: 'Waiting for the new helper',
+        done: false,
+        manual: false,
+      });
+    }
     cards.push({
       id: 'run',
       title: 'Start the helper',
@@ -148,7 +164,7 @@ export default function ConnectGuide({ link, onCheck, onClose }: { link: Link; o
       ) : (
         <>It says <b>&quot;node&quot; is not recognized</b>? <button type="button" className="cg-link" onClick={() => { setConfirmed((c) => ({ ...c, node: false })); setCursor(1); }}>Go back and install Node.js</button>.</>
       ),
-      done: link.helperUp || link.connected,
+      done: (link.helperUp && !link.helperOutdated) || link.connected,
       manual: false,
     });
   }

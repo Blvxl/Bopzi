@@ -5,13 +5,15 @@
 //   node bopzi-helper.mjs                          answers http://localhost:3000
 //   node bopzi-helper.mjs --origin https://bopzi.example
 //
-// It never reads your sign-in and never sends anything anywhere except to Codex on this machine.
+// It reads your name, plan and picture from your Codex sign-in only to show them in Bopzi, and never sends your sign-in anywhere except to ChatGPT itself.
 
 import http from 'node:http';
-import { codexAsk, codexImage, codexStatus } from './codex-core.mjs';
+import { codexAccount, codexAsk, codexImage, codexPicture, codexStatus } from './codex-core.mjs';
 import { robloxAvatar, robloxImage } from './roblox.mjs';
 
 const PORT = Number(process.env.BOPZI_HELPER_PORT ?? 47615);
+/** Goes up whenever the helper gains something the website relies on, so the page can ask for a newer one. */
+const VERSION = 3;
 const origins = new Set(['http://localhost:3000']);
 for (let i = 2; i < process.argv.length; i++) if (process.argv[i] === '--origin' && process.argv[i + 1]) origins.add(process.argv[++i].replace(/\/+$/, ''));
 
@@ -48,7 +50,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   const route = new URL(req.url ?? '/', 'http://localhost').pathname;
-  if (req.method === 'GET' && route === '/status') { reply(res, origin, 200, { helper: 1, ...(await codexStatus()) }); return; }
+  if (req.method === 'GET' && route === '/status') { reply(res, origin, 200, { helper: 1, version: VERSION, ...(await codexStatus()) }); return; }
+  // Who Codex is signed in as, only to show a name, plan and picture in Bopzi. The sign-in itself never leaves this computer except to ChatGPT.
+  if (req.method === 'GET' && route === '/account') {
+    const account = await codexAccount();
+    const image = account ? await codexPicture() : null;
+    reply(res, origin, 200, { account: account ? { name: account.name, email: account.email, plan: account.plan } : null, picture: image ? `data:${image.type};base64,${Buffer.from(image.bytes).toString('base64')}` : null });
+    return;
+  }
 
   if (req.method === 'POST' && route === '/generate') {
     if (busy) { reply(res, origin, 409, { error: 'An image is already being generated. Wait for it to finish.' }); return; }

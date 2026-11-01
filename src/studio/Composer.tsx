@@ -14,6 +14,7 @@ import { finish } from './finish';
 import ReferenceBrowser from './ReferenceBrowser';
 import RobloxPreview from './RobloxPreview';
 import ConnectGuide from './ConnectGuide';
+import { plain } from './friendly';
 import VersionHistory from './VersionHistory';
 import { usePresence } from './usePresence';
 import { HELPER, findLink, type Link } from './imageRoute';
@@ -424,7 +425,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
           return true;
         } catch (e) {
           downloadBlob(final, 'bopzi-thumbnail.png');
-          const why = e instanceof Error ? e.message : 'The image could not be saved on this computer.';
+          const why = plain(e instanceof Error ? e.message : 'The image could not be saved on this computer.');
           const message = `${why} The image was downloaded so it is not lost.`;
           s.setGeneration({ phase: 'failed', startedAt, message, retry: () => { s.setGeneration({ phase: 'placing', startedAt, tint }); void place(); } });
           if (mounted.current) setError(message);
@@ -435,7 +436,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
     } catch (e) {
       if (abort.signal.aborted) { s.setGeneration(null); s.notify('Generation cancelled.'); return null; }
       else {
-        const message = e instanceof Error ? e.message : 'Generation failed.';
+        const message = plain(e instanceof Error ? e.message : 'Generation failed.');
         s.setGeneration({ phase: 'failed', startedAt, message, retry: () => void run(payload, tint, replaceId, within, edit, polish) });
         if (mounted.current) setError(message);
       }
@@ -555,7 +556,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
       const done = await run({ refine: { image: await fileData(asset.record.blob), instruction, region, icon: asIcon, references: references.map(r => ({ data: r.data, label: r.label })) } }, undefined, current.id, { previous: asset.record.blob, region }, { instruction, parentId: current.id, area: !!region });
       if (done && mounted.current) { setChange(''); s.setRegion(null); field.current?.focus(); }
     } catch (e) {
-      if (mounted.current) setError(e instanceof Error ? e.message : 'The edit could not be prepared.');
+      if (mounted.current) setError(plain(e instanceof Error ? e.message : 'The edit could not be prepared.'));
     } finally {
       preparingEdit.current = false;
       if (mounted.current) setBusy(false);
@@ -616,7 +617,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
       setReferences(v => [...v, { name: `${body.name}-avatar.png`, data: body.data, label: 'My avatar', role: 'character' as Role }].slice(0, MAX_IMAGES));
       try { localStorage.setItem('bopzi:roblox-username', body.name); } catch { /* remembered only as a convenience */ }
       if (mounted.current) setPop(null);
-    } catch (e) { setError(e instanceof Error ? e.message : 'That avatar could not be loaded.'); }
+    } catch (e) { setError(plain(e instanceof Error ? e.message : 'That avatar could not be loaded.')); }
     finally { if (mounted.current) setAvatarBusy(false); }
   };
   const upload = async (files: File[], asStyle: boolean) => {
@@ -643,7 +644,7 @@ export default function Composer({ conceptDock }: { conceptDock: HTMLDivElement 
       setPicked(game); setStyleUpload(null);
       s.setPrompt({ styleReferenceId: game.id, style: 'match' });
       s.notify(`Using the look of “${game.name}” as inspiration.`);
-    } catch (e) { setError(e instanceof Error ? e.message : 'That game could not be loaded.'); }
+    } catch (e) { setError(plain(e instanceof Error ? e.message : 'That game could not be loaded.')); }
   };
   const attach = (files: File[]) => {
     if (full) setError(`A thumbnail can use up to ${MAX_IMAGES} of your images. Remove one to add another.`);

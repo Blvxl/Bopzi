@@ -942,3 +942,9 @@ button.take-tile:active { transform:scale(.99); }
 .cg-big-check { display:grid; place-items:center; width:56px; height:56px; border-radius:50%; background:#3ecf8e; color:#0c0b0a; }
 @keyframes cg-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .cg-waiting svg { animation:none; } .cg-card { animation:none; } }
+
+/* While waiting: what to expect, and one useful habit at a time */
+.gen-sub { display:grid; gap:3px; margin:0; font-size:12px; line-height:1.45; color:var(--color-ui-dim); }
+.gen-sub .gen-tip { color:var(--color-ui-fg); opacity:.85; animation:gen-tip-in .5s ease-out both; }
+@keyframes gen-tip-in { from { opacity:0; transform:translateY(3px); } to { opacity:.85; transform:none; } }
+@media (prefers-reduced-motion:reduce) { .gen-sub .gen-tip { animation:none; } }

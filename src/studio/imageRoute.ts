@@ -4,6 +4,8 @@
  */
 
 export const HELPER = 'http://127.0.0.1:47615';
+/** The oldest helper this page works with. Raise it whenever the page starts to rely on something new in the helper. */
+export const MIN_HELPER = 3;
 
 export type Via = 'codex' | 'helper';
 /** What the browser says about letting this site talk to a program on the same computer. */
@@ -14,6 +16,8 @@ export type Link = {
   reason: string;
   /** Only meaningful for the helper. */
   helperUp: boolean;
+  /** True when the helper runs but is older than this page needs. */
+  helperOutdated?: boolean;
   permission: Permission;
 };
 
@@ -30,13 +34,13 @@ export async function localAccess(): Promise<Permission> {
   }
 }
 
-async function helper(): Promise<{ up: boolean; connected: boolean; reason: string }> {
+async function helper(): Promise<{ up: boolean; connected: boolean; reason: string; version: number }> {
   try {
     const body = await (await fetch(`${HELPER}/status`, { cache: 'no-store' })).json();
     if (!body?.helper) throw new Error('not the helper');
-    return { up: true, connected: !!body.connected, reason: body.reason || '' };
+    return { up: true, connected: !!body.connected, reason: body.reason || '', version: Number(body.version) || 1 };
   } catch {
-    return { up: false, connected: false, reason: '' };
+    return { up: false, connected: false, reason: '', version: 0 };
   }
 }
 
@@ -63,5 +67,6 @@ export async function findLink(): Promise<Link> {
     : permission === 'denied'
       ? 'Your browser is blocking Bopzi from reaching the helper on this computer.'
       : 'Connect your own ChatGPT plan to generate here.';
-  return { via: 'helper', connected: state.up && state.connected, reason, helperUp: state.up, permission };
+  const outdated = state.up && state.version < MIN_HELPER;
+  return { via: 'helper', connected: state.up && !outdated && state.connected, reason: outdated ? 'Your Bopzi helper is out of date. Download the new one and start it again.' : reason, helperUp: state.up, helperOutdated: outdated, permission };
 }
