@@ -10,7 +10,8 @@
     "start:web": "next start",
     "cf:build": "opennextjs-cloudflare build",
     "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "collect": "node --env-file-if-exists=.env.local collector/run.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

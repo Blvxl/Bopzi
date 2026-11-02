@@ -19,6 +19,9 @@ reports/
 research_notes/
 docs/redesign/
 
+# Local research database
+data/
+
 # Logs and operating system files
 *.log
 .DS_Store

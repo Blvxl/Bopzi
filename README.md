@@ -16,6 +16,10 @@ Bopzi collects its own player numbers from Roblox's public endpoints, keeps the 
 
 The trend scores are plain code; the AI only explains them.
 
+## Collector
+
+`npm run collect` does one collection run: it reads Roblox's four public lists (top playing now, top trending, up-and-coming, top revisited), looks up every game on them plus any seen in the last 7 days, and saves a snapshot. With no database settings it writes to `data/bopzi.sqlite`. With `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set it writes to Supabase; create the tables first by running [db/schema.sql](db/schema.sql) in the Supabase SQL editor.
+
 ## Development
 
 Needs [Node.js](https://nodejs.org) 20.9 or newer and authorized repository access.
