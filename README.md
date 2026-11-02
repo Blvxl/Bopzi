@@ -1,10 +1,10 @@
 # Bopzi
 
-**A private Windows app for Roblox thumbnails and game icons. It runs on your computer.**
+**A free website for Roblox thumbnails and game icons, at [bopzi.dev](https://bopzi.dev).**
 
 Describe your game and Bopzi draws the image with your own ChatGPT plan. Then change it in plain words, or finish it by hand with text, stickers, lighting and layers.
 
-Bopzi is invite only. Accepted creators get the app and a license key locked to their computer, under a separate 5% game-revenue-share agreement. Your own ChatGPT account then powers the AI images, and usage counts against your own plan.
+Bopzi is free for everyone: no payment and no revenue share. The editor runs in your browser. For AI images you connect your own ChatGPT plan through a small helper that runs on your computer, and usage counts against your own plan. A Windows desktop build also exists; it uses license keys.
 
 <p align="center"><img src="docs/images/studio.jpg" alt="A generated thumbnail open in the Bopzi studio, with a box for describing a change" width="860"></p>
 
@@ -25,21 +25,22 @@ Bopzi is invite only. Accepted creators get the app and a license key locked to 
 
 | | |
 |---|---|
-| **To use Bopzi** | Windows and a license key for that computer |
-| **For AI images** | A paid ChatGPT plan |
+| **To use Bopzi** | A modern browser. Sign up for a free account |
+| **For AI images** | A paid ChatGPT plan and the Bopzi helper running on your computer |
 | **For development** | Authorized repository access and [Node.js](https://nodejs.org) 20.9 or newer |
-| **Tested on** | Windows |
+| **Desktop build** | Windows, with a license key for that computer |
 
 Image generation is not part of the Free ChatGPT plan, and access can vary by plan. Images count against your plan's usage.
 
 ## Get started
 
-1. Install Bopzi and open it. The activation screen shows your **device code**.
-2. Send that code to the owner. Need help? DM `blvxl` on Discord.
-3. Paste the license key you get back. It works only on that computer. Keep it safe: Bopzi logs out whenever it closes, so you paste it each time you open the app.
-4. Connect your ChatGPT account from the account menu. Your license and your ChatGPT connection are separate, and Bopzi does not provide a shared ChatGPT login.
+1. Open [bopzi.dev](https://bopzi.dev), sign up and open the studio.
+2. For AI images, open the connect guide in the studio. It walks you through downloading the helper and signing in to ChatGPT. Bopzi does not provide a shared ChatGPT login.
+3. On the website your projects are saved in your browser. Download your work to keep a copy.
 
-Bopzi checks a signed list of disabled keys every hour, and needs to reach it at least once every 7 days. When a new version is out, an **Update** button appears in the top bar. One click downloads it, checks its signature and installs it.
+### Desktop build
+
+The Windows app shows a **device code** on its activation screen. Send it to the owner (DM `blvxl` on Discord) and paste the license key you get back; it works only on that computer, and Bopzi logs out whenever it closes. It checks a signed list of disabled keys every hour and needs to reach it at least once every 7 days. When a new version is out, an **Update** button appears in the top bar.
 
 ### Authorized development only
 
@@ -57,8 +58,8 @@ Open http://127.0.0.1:3000. A license key or the owner's signing key is needed t
 > [!WARNING]
 > **The ChatGPT connection is unofficial.** Bopzi reads your local Codex sign-in on the server and calls an undocumented ChatGPT backend for images and your profile picture. This route is not supported by OpenAI for other apps. It can change or stop working at any time, and it is your responsibility to check that your use fits OpenAI's terms. See [how the integration works](docs/chatgpt-integration.md).
 
-- **Keep it on your own computer.** Bopzi can use your Codex session and read local files, so never put it on the internet or share your Codex session. See [SECURITY.md](SECURITY.md).
-- **Projects stay on this computer.** They are saved as files in `.bopzi\library` in your user folder, and shown only to the license that made them. They survive updates and reinstalls, but they do not sync, and they are not encrypted.
+- **Keep the helper on your own computer.** It can use your Codex session, so never share that session, and never set `BOPZI_LOCAL_CHATGPT` on a public host. See [SECURITY.md](SECURITY.md).
+- **Projects do not sync.** On the website they live in this browser, so clearing site data removes them. In the desktop build they are files in `.bopzi\library` in your user folder. They are not encrypted.
 - **Know what leaves your computer.** When you generate, your prompt and attached images go to OpenAI. Avatars, game details and reference thumbnails are fetched from Roblox.
 - **Check generated art yourself.** You are responsible for what you publish, including Roblox's rules and other people's rights.
 
@@ -77,10 +78,10 @@ Open http://127.0.0.1:3000. A license key or the owner's signing key is needed t
 
 ## Contributing
 
-This is a private proprietary project. Contributions are accepted only from collaborators authorized by the owner. See [CONTRIBUTING.md](CONTRIBUTING.md). The video editor in `src/video` is unfinished and hidden from the app for now.
+The source is private. Contributions are accepted only from collaborators authorized by the owner. See [CONTRIBUTING.md](CONTRIBUTING.md). The video editor in `src/video` is unfinished and hidden from the app for now.
 
 ## License
 
-The current version of Bopzi is proprietary and is not offered under an open-source license. Earlier copies published under MIT remain subject to the MIT terms that accompanied those copies. Access for approved game creators is governed by a separate agreement; this repository notice does not set those commercial terms. See [LICENSE](LICENSE). Third-party dependencies and bundled assets may have their own terms.
+The current version of Bopzi is proprietary and is not offered under an open-source license. Earlier copies published under MIT remain subject to the MIT terms that accompanied those copies. Using the website is free, which grants no rights to the source code. See [LICENSE](LICENSE). Third-party dependencies and bundled assets may have their own terms.
 
 Bopzi is independent and is not affiliated with, endorsed by or sponsored by Roblox Corporation or OpenAI. Roblox and ChatGPT are trademarks of their respective owners.

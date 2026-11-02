@@ -16,4 +16,4 @@ Next.js documentation bundled in `node_modules/next/dist/docs/` describes the ve
 
 Describe what you expected, what happened, the steps to reproduce it, your operating system and architecture, Node version, and any relevant logs. Remove credentials, private prompts, media and personal paths before sharing. For a suspected security issue, avoid publishing exploit details until a private reporting channel is available.
 
-Before work begins, agree in writing on contribution ownership and licensing with the owner. Include provenance and licensing information for any new third-party assets or dependencies. See [LICENSE](LICENSE) for the current proprietary notice; commercial access terms are set by the separate agreement, not this file.
+Before work begins, agree in writing on contribution ownership and licensing with the owner. Include provenance and licensing information for any new third-party assets or dependencies. See [LICENSE](LICENSE) for the current proprietary notice.
