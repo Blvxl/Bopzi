@@ -1,37 +1,25 @@
 import type { Metadata, Viewport } from 'next';
-import AppSidebar from '@/components/AppSidebar';
-import AuthGate from '@/components/AuthGate';
-import { inter, sora } from '@/lib/fonts';
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from '@/lib/site';
 import './globals.css';
-import './editor.css';
-import './shell.css';
+
+const title = `${SITE_NAME} · ${SITE_TAGLINE}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: 'Bopzi · Roblox thumbnail maker', template: '%s · Bopzi' },
+  title: { default: title, template: `%s · ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
-  openGraph: { title: 'Bopzi · Roblox thumbnail maker', description: SITE_DESCRIPTION, siteName: SITE_NAME, type: 'website' },
-  twitter: { card: 'summary_large_image', title: 'Bopzi · Roblox thumbnail maker', description: SITE_DESCRIPTION },
-  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'black-translucent' },
+  openGraph: { title, description: SITE_DESCRIPTION, siteName: SITE_NAME, type: 'website' },
+  twitter: { card: 'summary', title, description: SITE_DESCRIPTION },
   icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }], apple: '/icons/apple-touch-icon.png' },
 };
 
-export const viewport: Viewport = { themeColor: '#111214' };
+export const viewport: Viewport = { themeColor: '#111113' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sora.variable} ${inter.variable}`}>
-      <body>
-        {/* One window: the sidebar switches between the tools, the page fills the rest. */}
-        <AuthGate>
-          <div className="app-shell">
-            <AppSidebar />
-            <div className="app-main">{children}</div>
-          </div>
-        </AuthGate>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }

@@ -16,7 +16,7 @@ export default function AccountForm({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const next = () => `${location.origin}/auth/callback?next=${encodeURIComponent(location.pathname.startsWith('/studio') ? '/studio' : '/projects')}`;
+  const next = () => `${location.origin}/auth/callback?next=${encodeURIComponent(location.pathname)}`;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

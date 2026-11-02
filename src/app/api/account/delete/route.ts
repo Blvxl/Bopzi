@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
-import { isSameOriginCall } from '@/lib/chatgpt/server';
 import { callerOf, tooMany } from '@/lib/rate-limit';
 import { HOSTED_ACCOUNTS, SUPABASE_URL } from '@/lib/supabase/config';
 import { supabaseServer } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+/** Only Bopzi's own pages may call this: the browser's Origin must match this host. */
+function isSameOriginCall(req: Request) {
+  const origin = req.headers.get('origin');
+  if (!origin) return false;
+  try { return new URL(origin).host === (req.headers.get('host') ?? new URL(req.url).host); } catch { return false; }
+}
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
 
 /**
