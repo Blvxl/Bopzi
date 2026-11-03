@@ -108,27 +108,16 @@ export default function ActivityChart({ history, range, onScrub }: { history: Sn
   const model = useMemo<Model | null>(() => {
     if (!raw.length || !w) return null;
     const all = thin(raw, Math.max(Math.round(plotW / 2), 60));
-    const spaced = all.slice(1).map((p, i) => p.t - all[i].t).sort((a, b) => a - b);
-    const limit = Math.max(12 * 60e3, Math.max(spaced[Math.floor(spaced.length / 2)] ?? 0, 60e3) * 3);
-    // A lone snapshot with nothing near it draws no line, only empty space around it, so it is left out once there is a line to show.
-    const joined = all.filter((p, i) => (i > 0 && p.t - all[i - 1].t <= limit) || (i < all.length - 1 && all[i + 1].t - p.t <= limit));
-    const pts = joined.length >= 2 ? joined : all;
+    const pts = all;
     let lo = Infinity, hi = -Infinity;
     for (const p of pts) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; }
     const pad = (hi - lo) * 0.2 || hi * 0.02 || 1;
     lo = Math.max(0, lo - pad); hi += pad;
     const y = (v: number) => PAD.top + (1 - (v - lo) / (hi - lo)) * (h - PAD.top - PAD.bottom);
-    // A gap is a stretch with no collection; the line stops there instead of drawing across it, and the time axis
-    // squeezes the gap to a couple of normal steps so hours of silence do not leave the chart mostly empty.
-    const diffs = pts.slice(1).map((p, i) => p.t - pts[i].t).sort((a, b) => a - b);
-    const step = Math.max(diffs[Math.floor(diffs.length / 2)] ?? 0, 60e3);
-    const gap = Math.max(12 * 60e3, step * 3);
-    const along = [0];
-    for (let i = 1; i < pts.length; i++) { const dt = pts[i].t - pts[i - 1].t; along.push(along[i - 1] + (dt > gap ? step * 2 : dt)); }
-    const span = along[along.length - 1];
-    const xy = pts.map((p, i) => ({ x: span === 0 ? plotW / 2 : (along[i] / span) * plotW, y: y(p.v) }));
-    const groups: number[][] = [];
-    pts.forEach((p, i) => { if (i === 0 || p.t - pts[i - 1].t > gap) groups.push([]); groups[groups.length - 1].push(i); });
+    // Connect recorded snapshots over their actual elapsed time; values between them are estimates.
+    const span = pts[pts.length - 1].t - pts[0].t;
+    const xy = pts.map((p) => ({ x: span === 0 ? plotW / 2 : ((p.t - pts[0].t) / span) * plotW, y: y(p.v) }));
+    const groups = [pts.map((_, i) => i)];
     const floor = h - PAD.bottom;
     const runs = groups.map((g): Run => {
       const xs = g.map((i) => xy[i].x), ys = g.map((i) => xy[i].y);
@@ -155,7 +144,7 @@ export default function ActivityChart({ history, range, onScrub }: { history: Sn
   useEffect(() => { modelRef.current = model; report.current = onScrub; });
 
   const paint = useCallback((x: number, m: Model) => {
-    // Which unbroken stretch of line is under x; inside a gap the cursor stays on the nearer end.
+    // Find the curve under the pointer.
     let run = m.runs[0];
     for (const r of m.runs) { if (x >= r.xs[0]) run = r; }
     const cx = Math.min(Math.max(x, run.xs[0]), run.xs[run.xs.length - 1]);
@@ -169,7 +158,7 @@ export default function ActivityChart({ history, range, onScrub }: { history: Sn
     const estimated = Math.abs(m.xy[near].x - cx) > 0.75;
     const base = m.pts[near].s;
     const value = estimated ? Math.round(m.lo + (1 - (y - PAD.top) / (m.h - PAD.top - PAD.bottom)) * (m.hi - m.lo)) : base.players;
-    // Between two snapshots the moment is worked out along the segment the cursor is on (never across a squeezed gap).
+    // Between snapshots the moment is worked out along the segment the cursor is on.
     let a = near;
     if (m.xy[a].x > cx && a > 0) a--;
     const b = Math.min(a + 1, m.xy.length - 1);

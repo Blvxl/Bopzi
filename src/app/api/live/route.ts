@@ -1,12 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { dbPath } from '@/lib/data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const file = process.env.BOPZI_DB ?? path.join(process.cwd(), 'data', 'bopzi.sqlite');
+  const file = dbPath();
   if (!existsSync(file)) return Response.json({ events: [] }, { headers: { 'Cache-Control': 'no-store' } });
   const db = new DatabaseSync(file, { readOnly: true });
   try {

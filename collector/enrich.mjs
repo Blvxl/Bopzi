@@ -4,7 +4,7 @@
 //   node collector/enrich.mjs searches   read Roblox's search suggestions, the closest thing to "what players search for"
 //   node collector/enrich.mjs events     ask Roblox which events (updates, parties) the busiest games have scheduled
 //   node collector/enrich.mjs all        all four
-// They work on the local database (data/bopzi.sqlite).
+// They work on the local database (~/.bopzi/research/bopzi.sqlite).
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { openSqlite } from './store-sqlite.mjs';

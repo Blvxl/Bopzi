@@ -2,8 +2,8 @@
 //   npm run collect                   tick and discover together
 //   node collector/run.mjs tick       refresh the players in the known games and save the total (run every few minutes)
 //   node collector/run.mjs discover   search for games that are on no list and remember them (run now and then)
-// Without SUPABASE_SERVICE_ROLE_KEY it saves to data/bopzi.sqlite, so it can be tried with no setup.
-import { chart, details, votes, search, groups, SORTS, WORDS } from './roblox.mjs';
+// Without SUPABASE_SERVICE_ROLE_KEY it saves to ~/.bopzi/research/bopzi.sqlite, so it can be tried with no setup.
+import { chart, details, votes, search, groups, region, COUNTRIES, SORTS, WORDS } from './roblox.mjs';
 import { openSqlite } from './store-sqlite.mjs';
 import { openSupabase } from './store-supabase.mjs';
 
@@ -17,6 +17,8 @@ const WORDS_PER_RUN = Number(process.env.BOPZI_WORDS_PER_RUN ?? 20);
 const SEARCH_PAGES = Number(process.env.BOPZI_SEARCH_PAGES ?? 5);
 // A word already searched is left alone for this many days.
 const SEARCH_AGAIN_DAYS = 3;
+// How many countries' lists are read each discover run.
+const COUNTRIES_PER_RUN = 4;
 // Roblox lets only a few dozen lookups through a minute, so a tick cannot look up every game. Busy games are looked up every tick,
 // quieter ones every few ticks, and the total uses the last count seen for the ones skipped. The tick stops looking up after this long.
 const TICK_BUDGET_MS = Number(process.env.BOPZI_TICK_BUDGET_MS ?? 150_000);
@@ -108,18 +110,37 @@ if (DISCOVER) {
   const done = new Set(await store.searchedSince(new Date(now - SEARCH_AGAIN_DAYS * 864e5).toISOString()));
   const words = await nextQueries(done, WORDS_PER_RUN);
   const fresh = new Map();
+  // Games we already know that came back in a result: their counts in the result are current, so they are used as they are.
+  const seen = new Map();
   const asked = [];
   for (const word of words) {
     try {
       let added = 0;
-      for (const g of await search(word, sessionId, SEARCH_PAGES)) if (!known.has(g.universeId) && g.playing > 0 && !fresh.has(g.universeId)) { fresh.set(g.universeId, g); added++; }
+      for (const g of await search(word, sessionId, SEARCH_PAGES)) {
+        if (known.has(g.universeId)) seen.set(g.universeId, g.playing);
+        else if (g.playing > 0 && !fresh.has(g.universeId)) { fresh.set(g.universeId, g); added++; }
+      }
       asked.push({ query: word, ts, found: added });
     } catch (e) { console.log(`  search "${word}" skipped: ${e.message}`); }
   }
+  // Roblox's own lists differ by country and device, and small local hits (a new Indonesian or Turkish game) show up there first.
+  const turn = Math.floor(now.getTime() / 18e4) * COUNTRIES_PER_RUN;
+  const countries = Array.from({ length: COUNTRIES_PER_RUN }, (_, i) => COUNTRIES[(turn + i) % COUNTRIES.length]);
+  for (const country of countries) {
+    for (const device of ['computer', 'phone']) {
+      try {
+        for (const g of await region(country, device, sessionId)) {
+          if (known.has(g.universeId)) seen.set(g.universeId, g.playing);
+          else if (g.playing > 0 && !fresh.has(g.universeId)) fresh.set(g.universeId, { ...g, creatorId: null, creatorName: null });
+        }
+      } catch (e) { console.log(`  ${country}/${device} skipped: ${e.message}`); }
+    }
+  }
+  await store.refreshPlaying([...seen].map(([id, playing]) => ({ id, playing })), ts);
   await store.markSearched(asked);
   const rows = [...fresh.values()].map((g) => ({
     universe_id: g.universeId, root_place_id: g.rootPlaceId, name: g.name, creator_id: g.creatorId, creator_name: g.creatorName, creator_type: null,
-    genre_l1: null, genre_l2: null, created: null, updated: null, last_seen: ts, playing: g.playing,
+    genre_l1: g.genre ?? null, genre_l2: null, created: null, updated: null, last_seen: ts, playing: g.playing,
     description: null, max_players: null, price: null, avatar_type: null, creator_verified: null, visits: null, favorites: null, up_votes: g.upVotes ?? null, down_votes: g.downVotes ?? null, peak: g.playing,
   }));
   await store.save({ games: rows });
@@ -134,7 +155,7 @@ if (DISCOVER) {
     console.log(`  looked up ${found.size} of ${stale.length} groups`);
   }
   const best = asked.sort((a, b) => b.found - a.found).slice(0, 3).map((a) => `${a.query} +${a.found}`).join(', ');
-  console.log(`  search: ${words.length} queries, ${rows.length} new games with players (best: ${best})`);
+  console.log(`  search: ${words.length} queries and ${countries.join(' ')} lists, ${rows.length} new games with players, ${seen.size} known games refreshed (best: ${best})`);
   if (!TICK) process.exit(0);
 }
 

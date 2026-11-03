@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { dbPath } from '@/lib/data';
 import { eventsAfter, lastEventId } from '@/lib/pulse';
 import type { TotalRow } from '@/lib/series';
 
@@ -17,7 +17,7 @@ const BEAT_MS = 15_000;
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const file = process.env.BOPZI_DB ?? path.join(process.cwd(), 'data', 'bopzi.sqlite');
+  const file = dbPath();
   if (!existsSync(file)) return new Response('No collection yet.', { status: 404 });
 
   const enc = new TextEncoder();

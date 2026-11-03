@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 
 const TICK_MS = 3 * 60 * 1000;
-const DISCOVER_PAUSE_MS = 4 * 60 * 1000;
+const DISCOVER_PAUSE_MS = 90 * 1000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** A run that takes longer than this is stopped (it is stuck), so a stalled connection never freezes the chart for an hour. */

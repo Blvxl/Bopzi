@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { dbPath } from '@/lib/data';
 import { icons } from '@/lib/icons';
 import { latestEvents } from '@/lib/pulse';
 import { linkSeries, type TotalRow } from '@/lib/series';
@@ -12,7 +12,7 @@ const headers = { 'Cache-Control': 'no-store' };
 const DAY = 864e5;
 
 type Top = { id: number; name: string; creator: string | null; playing: number };
-type Move = { id: number; name: string; creator: string | null; first: number; last: number };
+type Move = { id: number; name: string; creator: string | null; place: number | null; first: number; last: number };
 
 /** Downsample a series to at most n points, keeping the last one. */
 const thin = (v: number[], n: number) => {
@@ -25,7 +25,7 @@ const thin = (v: number[], n: number) => {
 export async function GET(req: Request) {
   const wanted = Number(new URL(req.url).searchParams.get('pulse'));
   const pulseLimit = Number.isFinite(wanted) && wanted > 0 ? Math.min(wanted, 200) : 40;
-  const file = process.env.BOPZI_DB ?? path.join(process.cwd(), 'data', 'bopzi.sqlite');
+  const file = dbPath();
   if (!existsSync(file)) return Response.json({ history: [], top: [], rising: [], error: 'No local collection yet.' }, { headers });
   let db: DatabaseSync | undefined;
   try {
@@ -41,12 +41,12 @@ export async function GET(req: Request) {
     // Rising: how much a game grew over the last day, measured against how the whole market moved, because every game
     // swells in the evening and shrinks at night and that is not a reason to call any one of them rising.
     const lastTs = (db.prepare('SELECT MAX(ts) AS t FROM snapshots').get() as { t: string | null }).t;
-    let rising: (Top & { change: number; pct: number; spark: number[] })[] = [];
+    let rising: (Top & { place: number | null; change: number; pct: number; spark: number[] })[] = [];
     if (lastTs) {
       const since = new Date(new Date(lastTs).getTime() - DAY).toISOString();
       const moves = db.prepare(`
         WITH r AS (SELECT universe_id, MIN(ts) AS a, MAX(ts) AS b FROM snapshots WHERE ts >= ? GROUP BY universe_id HAVING COUNT(*) >= 2)
-        SELECT g.universe_id AS id, g.name, g.creator_name AS creator, x.playing AS first, y.playing AS last
+        SELECT g.universe_id AS id, g.name, g.creator_name AS creator, g.root_place_id AS place, x.playing AS first, y.playing AS last
         FROM r JOIN snapshots x ON x.universe_id = r.universe_id AND x.ts = r.a
                JOIN snapshots y ON y.universe_id = r.universe_id AND y.ts = r.b
                JOIN games g ON g.universe_id = r.universe_id
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
       const market = ratios[Math.floor(ratios.length / 2)] || 1;
       const series = db.prepare('SELECT playing FROM snapshots WHERE universe_id = ? AND ts >= ? ORDER BY ts');
       rising = moves
-        .map((m) => ({ id: m.id, name: m.name, creator: m.creator, playing: m.last, change: m.last - m.first, pct: (m.last / m.first / market - 1) * 100 }))
+        .map((m) => ({ id: m.id, name: m.name, creator: m.creator, place: m.place, playing: m.last, change: m.last - m.first, pct: (m.last / m.first / market - 1) * 100 }))
         .filter((m) => m.pct > 0)
         .sort((a, b) => b.pct - a.pct)
         .slice(0, 24)

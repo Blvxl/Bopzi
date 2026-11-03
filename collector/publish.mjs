@@ -50,8 +50,17 @@ async function put(name, body) {
 let sent = 0;
 if (only !== 'lists') {
   // 200 feed events: the Pulse page shows them all and the home page shows the first 40.
-  await put('overview.json', await get('/api/terminal?pulse=200'));
+  const overview = await get('/api/terminal?pulse=200');
+  await put('overview.json', overview);
   sent++;
+  // Rising cards link to these pages on the static public site. Publish in small batches.
+  const ids = [...new Set((JSON.parse(overview).rising ?? []).map((game) => game.id).filter((id) => Number.isSafeInteger(id) && id > 0))];
+  for (let i = 0; i < ids.length; i += 4) {
+    await Promise.all(ids.slice(i, i + 4).map(async (id) => {
+      try { await put(`games/${id}.json`, await get(`/api/games/${id}`)); sent++; }
+      catch (e) { console.error(`  game ${id}: ${e.message}`); }
+    }));
+  }
 }
 if (only === 'lists' || only === 'all') {
   for (const slug of LISTS) {

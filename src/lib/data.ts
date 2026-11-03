@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -20,7 +21,8 @@ export const DICTIONARY: Record<string, string> = {
   searches: 'Words Bopzi has searched Roblox for to find games, and how many new games each found. Internal bookkeeping.',
 };
 
-export const dbPath = () => process.env.BOPZI_DB ?? path.join(process.cwd(), 'data', 'bopzi.sqlite');
+/** ~/.bopzi/research/bopzi.sqlite, outside the project, so the collector's writes never count as changes to the site (see collector/paths.mjs). */
+export const dbPath = () => process.env.BOPZI_DB ?? path.join(homedir(), '.bopzi', 'research', 'bopzi.sqlite');
 
 /** The data API is for Bopzi's own research bot, not for the public: it needs the token from BOPZI_DATA_TOKEN. */
 export function authorized(req: Request) {

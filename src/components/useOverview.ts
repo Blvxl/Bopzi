@@ -6,7 +6,7 @@ import { PUBLISHED, published } from '@/lib/source';
 import type { Snapshot } from './ActivityChart';
 
 export type GameCard = { id: number; name: string; creator: string | null; playing: number; icon: string | null };
-export type Riser = GameCard & { change: number; pct: number; spark: number[] };
+export type Riser = GameCard & { place?: number | null; change: number; pct: number; spark: number[] };
 export type Stats = { peak: number; low: number; average: number; points: number; games: number };
 export type Visited = GameCard & { visits: number; favorites: number | null };
 export type Fresh = GameCard & { created: string };

@@ -1,6 +1,6 @@
 # Bopzi data (for the research bot)
 
-Everything Bopzi collects from Roblox lives in one database, `data/bopzi.sqlite` (SQLite; Supabase later with the same tables, see `db/schema.sql`). None of it needs to appear on the website. A private, read-only API lets the research bot ("Bopsy") query it.
+Everything Bopzi collects from Roblox lives in one database, `~/.bopzi/research/bopzi.sqlite` (SQLite; Supabase later with the same tables, see `db/schema.sql`). None of it needs to appear on the website. A private, read-only API lets the research bot ("Bopsy") query it.
 
 ## Private data API
 

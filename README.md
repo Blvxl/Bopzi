@@ -18,7 +18,7 @@ The trend scores are plain code; the AI only explains them.
 
 ## Collector
 
-`npm run collect` does one collection run: it reads Roblox's four public lists (top playing now, top trending, up-and-coming, top revisited), looks up every game on them plus any seen in the last 7 days, and saves a snapshot. With no database settings it writes to `data/bopzi.sqlite`. With `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set it writes to Supabase; create the tables first by running [db/schema.sql](db/schema.sql) in the Supabase SQL editor.
+`npm run collect` does one collection run: it reads Roblox's four public lists (top playing now, top trending, up-and-coming, top revisited), looks up every game on them plus any seen in the last 7 days, and saves a snapshot. With no database settings it writes to `~/.bopzi/research/bopzi.sqlite`. With `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set it writes to Supabase; create the tables first by running [db/schema.sql](db/schema.sql) in the Supabase SQL editor.
 
 ## Development
 
@@ -39,4 +39,4 @@ Bopzi is independent and is not affiliated with, endorsed by or sponsored by Rob
 
 ## Local terminal data
 
-Run `npm run collect:local` in a separate terminal to collect Roblox snapshots into `data/bopzi.sqlite` approximately every five minutes. Keep it running while you want history to accumulate; it does not start automatically after a restart. The dashboard refreshes from this local database every 30 seconds. Its total covers only games in each snapshot, and history starts when collection starts. Missing collection periods appear as gaps. `npm run collect` remains available for a single collection using the configured storage.
+Run `npm run collect:local` in a separate terminal to collect Roblox snapshots into `~/.bopzi/research/bopzi.sqlite` approximately every five minutes. Keep it running while you want history to accumulate; it does not start automatically after a restart. The dashboard refreshes from this local database every 30 seconds. Its total covers only games in each snapshot, and history starts when collection starts. Missing collection periods appear as gaps. `npm run collect` remains available for a single collection using the configured storage.

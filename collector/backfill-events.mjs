@@ -3,11 +3,12 @@
 // and a forecast looks ahead, so those only start once the collector is running. Run it once; running it again adds nothing.
 //   node collector/backfill-events.mjs
 import { DatabaseSync } from 'node:sqlite';
+import { DB_FILE } from './paths.mjs';
 import { openSqlite } from './store-sqlite.mjs';
 
 const MILESTONES = [1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000];
 const store = openSqlite(); // makes sure the tables exist
-const db = new DatabaseSync('data/bopzi.sqlite', { readOnly: true });
+const db = new DatabaseSync(DB_FILE, { readOnly: true });
 
 const rows = db.prepare(`SELECT universe_id, ts, playing, updated,
     LAG(playing) OVER w AS prev, LAG(updated) OVER w AS prev_updated, LAG(playing, 2) OVER w AS prev2, LAG(ts, 2) OVER w AS ts2

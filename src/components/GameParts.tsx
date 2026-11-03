@@ -1,6 +1,7 @@
 'use client';
 
 import type { GameCard, Riser } from './useOverview';
+import Link from 'next/link';
 
 export const compact = (n: number) => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 export const full = (n: number) => new Intl.NumberFormat('en-US').format(n);
@@ -12,7 +13,7 @@ export function GameIcon({ game, size = 44 }: { game: GameCard; size?: number })
 }
 
 /** A smooth little line of a game's players over the last day. */
-export function Sparkline({ values, up = true }: { values: number[]; up?: boolean }) {
+export function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return null;
   const w = 96, h = 36, pad = 3;
   const lo = Math.min(...values), hi = Math.max(...values), span = hi - lo || 1;
@@ -21,29 +22,30 @@ export function Sparkline({ values, up = true }: { values: number[]; up?: boolea
   let d = `M${pts[0][0]} ${pts[0][1]}`;
   for (let i = 1; i < pts.length - 1; i++) d += `Q${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} ${((pts[i][0] + pts[i + 1][0]) / 2).toFixed(1)} ${((pts[i][1] + pts[i + 1][1]) / 2).toFixed(1)}`;
   d += `L${pts.at(-1)![0]} ${pts.at(-1)![1]}`;
-  const id = `sp${values.length}${Math.round(values[0])}${Math.round(values.at(-1)!)}`;
   return (
     <svg className="spark" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true">
-      <defs><linearGradient id={id} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="var(--accent)" stopOpacity={up ? '.28' : '.12'} /><stop offset="1" stopColor="var(--accent)" stopOpacity="0" /></linearGradient></defs>
-      <path d={`${d}L${w} ${h}L0 ${h}Z`} fill={`url(#${id})`} />
-      <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={d} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 export function RisingCard({ game }: { game: Riser }) {
+  const actualPct = game.change / (game.playing - game.change) * 100;
   return (
-    <article className="r-card">
+    <Link className={`r-card ${actualPct > 0 ? 'r-positive' : actualPct < 0 ? 'r-negative' : 'r-neutral'}`} href={`/games/${game.id}`}>
       <div className="r-top">
         <GameIcon game={game} />
         <div className="r-name"><strong title={game.name}>{game.name}</strong><span>{game.creator ?? 'Roblox experience'}</span></div>
-        <Sparkline values={game.spark} />
       </div>
       <div className="r-foot">
-        <b>{compact(game.playing)}</b>
-        <span className="up">+{game.pct.toFixed(game.pct >= 100 ? 0 : 1)}% <i>vs market</i></span>
+        <div className="r-metrics">
+          <b title={full(game.playing)} aria-label={`${full(game.playing)} players`}>{compact(game.playing)} <i>players</i></b>
+          <span className={actualPct >= 0 ? 'up' : 'down'}>{actualPct >= 0 ? '+' : ''}{actualPct.toFixed(Math.abs(actualPct) >= 100 ? 0 : 1)}%</span>
+        </div>
+        <Sparkline values={game.spark} />
       </div>
-    </article>
+      <span className="sr-only">View game research</span>
+    </Link>
   );
 }
 

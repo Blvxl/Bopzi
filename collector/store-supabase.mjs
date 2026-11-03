@@ -64,6 +64,8 @@ export function openSupabase(url, serviceKey) {
       }
       return [...top.values()];
     },
+    // Not done for the hosted database yet: the tick refreshes these games itself, just less often.
+    async refreshPlaying() {},
     async recentEvents(sinceIso) {
       const { data, error } = await db.from('events').select('universe_id, kind').gte('ts', sinceIso);
       if (error) throw new Error(`events: ${error.message}`);

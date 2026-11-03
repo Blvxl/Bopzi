@@ -1,5 +1,7 @@
-// Local database in data/bopzi.sqlite, for development. Same shape as db/schema.sql.
+// Local database in ~/.bopzi/research/bopzi.sqlite, for development. Same shape as db/schema.sql.
 import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { DB_FILE } from './paths.mjs';
 import { DatabaseSync } from 'node:sqlite';
 
 /** Columns added to `games` after the first version; an older database gets them added when it is opened. */
@@ -8,8 +10,8 @@ const GAME_COLUMNS = {
   visits: 'integer', favorites: 'integer', up_votes: 'integer', down_votes: 'integer', peak: 'integer',
 };
 
-export function openSqlite(file = 'data/bopzi.sqlite') {
-  mkdirSync('data', { recursive: true });
+export function openSqlite(file = DB_FILE) {
+  mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   // The tick and discover runs write at the same time; wait for each other instead of failing with "database is locked".
   db.exec('pragma busy_timeout = 30000');
@@ -95,6 +97,12 @@ export function openSqlite(file = 'data/bopzi.sqlite') {
     async playerAt(id, iso) { return db.prepare('select playing from snapshots where universe_id = ? and ts <= ? order by ts desc limit 1').get(id, iso)?.playing ?? null; },
     /** The busiest each game was inside a window, and how many counts that rests on, to tell a comeback from a game that was always there. */
     async quietBefore(fromIso, toIso) { return db.prepare('select universe_id, max(playing) as top, count(*) as n from snapshots where ts >= ? and ts <= ? group by universe_id').all(fromIso, toIso); },
+    /** Fresh player counts for games already known, taken from search and list results (no lookup needed). */
+    async refreshPlaying(rows, ts) {
+      const stmt = db.prepare('update games set playing = ?, peak = max(coalesce(peak, 0), ?), last_seen = case when ? > 0 then ? else last_seen end where universe_id = ?');
+      db.exec('begin');
+      try { for (const r of rows) stmt.run(r.playing, r.playing, r.playing, ts, r.id); db.exec('commit'); } catch (e) { db.exec('rollback'); throw e; }
+    },
     /** Which kinds of event a game already had lately, so the same thing is not announced twice. */
     async recentEvents(sinceIso) { return db.prepare('select universe_id, kind from events where ts >= ?').all(sinceIso); },
     /** Every game the collector knows, so a search can tell which results are new. */

@@ -37,6 +37,22 @@ export async function chart(sortId, sessionId) {
   return (body.games ?? []).map((g, i) => ({ universeId: g.universeId, rank: i + 1, name: g.name, playing: g.playerCount }));
 }
 
+/** Every games list Roblox shows in one country on one device. Local hits that never reach the worldwide lists show up here. */
+export async function region(country, device, sessionId) {
+  const out = new Map();
+  const sorts = await getJson(`https://apis.roblox.com/explore-api/v1/get-sorts?${new URLSearchParams({ sessionId, device, country })}`);
+  for (const s of sorts?.sorts ?? []) {
+    if (s.contentType !== 'Games') continue;
+    const body = await getJson(`https://apis.roblox.com/explore-api/v1/get-sort-content?${new URLSearchParams({ sessionId, sortId: s.sortId, device, country })}`);
+    for (const g of body?.games ?? []) out.set(g.universeId, { universeId: g.universeId, name: g.name ?? '', playing: g.playerCount ?? 0, rootPlaceId: g.rootPlaceId ?? null, genre: g.genreL1 ?? null, upVotes: g.totalUpVotes ?? null, downVotes: g.totalDownVotes ?? null });
+    await sleep(120);
+  }
+  return [...out.values()];
+}
+
+/** Countries to rotate through; each run asks about a few, so all are covered within the hour. */
+export const COUNTRIES = 'id tr br vn ph th mx ar pl ru sa de fr es jp kr us gb eg ma co cl pe it nl ua kz my in au ca pk bd ng za ke ro cz gr pt se'.split(' ');
+
 const chunks = (list, n) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n));
 
 /**
