@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, Crown, Flag, RefreshCw, Rocket, Sparkles, TrendingDown, TrendingUp, Undo2, Zap } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, Crown, Flag, RefreshCw, Rocket, Sparkles, TrendingDown, TrendingUp, Undo2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PulseEvent } from './useOverview';
@@ -25,6 +25,7 @@ const BADGE = {
   comeback: { Icon: Undo2, cls: 'b-comeback', label: 'Comeback' },
   crash: { Icon: TrendingDown, cls: 'b-crash', label: 'Crash alert' },
   impact: { Icon: Rocket, cls: 'b-impact', label: 'Update impact' },
+  hands: { Icon: ArrowLeftRight, cls: 'b-hands', label: 'Changed hands' },
 } as const;
 
 function Line({ e }: { e: PulseEvent }) {
@@ -41,6 +42,7 @@ function Line({ e }: { e: PulseEvent }) {
     case 'impact': return (e.value ?? 0) >= 0
       ? <>An update brought <em>+{compact(e.value ?? 0)}</em>{e.detail ? <> (+{Number(e.detail).toLocaleString('en-US')}%)</> : null} players to {name}</>
       : <>An update cost {name} <em className="neg">{compact(Math.abs(e.value ?? 0))}</em>{e.detail ? <> ({Number(e.detail).toLocaleString('en-US')}%)</> : null} players</>;
+    case 'hands': { const [from, to] = (e.detail ?? '|').split('|'); return <>{name} changed hands to <em>{to}</em> (from {from})</>; }
     case 'new_game': return <>{name} is new and already at {num}</>;
   }
 }

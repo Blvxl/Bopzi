@@ -56,6 +56,8 @@ const CRASH_SHARE = 0.35;
 // "Update impact": how many players an update brought (or cost), looked at 30 to 75 minutes after it.
 const IMPACT_AFTER_MIN = 30;
 const IMPACT_AFTER_MAX = 75;
+// "Changed hands": a game whose owner (user or group) is not the one stored, once it has at least this many players.
+const HANDS_FROM = 100;
 const NEW_HIGH_FROM = 1_000;
 // A game this young, already this busy, is worth a line of its own.
 const NEW_GAME_DAYS = 3;
@@ -155,9 +157,10 @@ const firstSeen = new Map();
 const lastUpdated = new Map();
 const genreOf = new Map();
 const peakOf = new Map();
+const ownerOf = new Map();
 for (const g of tracked) {
   const id = Number(g.id);
-  firstSeen.set(id, g.firstSeen ?? ''); lastUpdated.set(id, g.updated ?? null); genreOf.set(id, g.genre ?? null); peakOf.set(id, g.peak ?? null);
+  firstSeen.set(id, g.firstSeen ?? ''); lastUpdated.set(id, g.updated ?? null); genreOf.set(id, g.genre ?? null); peakOf.set(id, g.peak ?? null); ownerOf.set(id, g.creatorId != null ? { id: g.creatorId, name: g.creatorName, type: g.creatorType } : null);
   if (!onChart.has(id)) stored.set(id, g.playing);
 }
 const prevTotal = await store.lastTotalTs();
@@ -193,6 +196,7 @@ const vote = writeRows ? await votes([...info.values()].filter((g) => (g.playing
 const games = [];
 const snapshots = [];
 const updates = [];
+const hands = [];
 const events = [];
 const byGenre = new Map();
 let players = 0;
@@ -214,6 +218,12 @@ for (const [id, was] of stored) {
   if (!g) continue; // not looked up this time: the stored row is already right
   const v = vote.get(id);
   games.push(gameRow(g, v));
+  // A change of owner: the creator Roblox now reports is not the one stored for this game.
+  const owner = ownerOf.get(id), to = g.creator;
+  if (owner && to?.id != null && (owner.id !== to.id || owner.type !== to.type) && playing >= HANDS_FROM) {
+    hands.push({ ts, universe_id: id, from_id: owner.id, from_name: owner.name ?? null, from_type: owner.type ?? null, to_id: to.id, to_name: to.name ?? null, to_type: to.type ?? null });
+    events.push({ ts, universe_id: id, kind: 'hands', value: playing, prev: null, detail: `${owner.name ?? 'unknown'}|${to.name ?? 'unknown'}`, key: `o:${to.id}:${ts.slice(0, 10)}` });
+  }
   // An update shows up as a new "updated" time on a game whose earlier one is known.
   const before = lastUpdated.get(id);
   if (g.updated && before && before !== g.updated) {
@@ -275,5 +285,5 @@ for (const u of await store.updatesBetween(new Date(now - IMPACT_AFTER_MAX * 6e4
 }
 const known = new Set(games.map((g) => g.universe_id));
 
-await store.save({ games, snapshots, charts: writeRows ? charts.filter((c) => known.has(c.universe_id)) : [], totals: [{ ts, players, games: active, added }], updates, events, genres: [...byGenre].map(([genre, t]) => ({ ts, genre, players: t.players, games: t.games })) });
+await store.save({ games, snapshots, charts: writeRows ? charts.filter((c) => known.has(c.universe_id)) : [], totals: [{ ts, players, games: active, added }], updates, events, hands, genres: [...byGenre].map(([genre, t]) => ({ ts, genre, players: t.players, games: t.games })) });
 console.log(`Saved total ${players.toLocaleString('en-US')} players in ${active} games, ${added.toLocaleString('en-US')} of them in newly found games (${info.size} looked up, ${snapshots.length} game rows) at ${ts}`);

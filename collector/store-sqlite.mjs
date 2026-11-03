@@ -23,6 +23,14 @@ export function openSqlite(file = 'data/bopzi.sqlite') {
     create table if not exists genre_totals (ts text not null, genre text not null, players integer not null, games integer not null, primary key (ts, genre));
     create table if not exists events (id integer primary key autoincrement, ts text not null, universe_id integer not null, kind text not null, value integer, prev integer, detail text, key text not null, unique (universe_id, key));
     create index if not exists events_ts_idx on events (ts desc);
+    create table if not exists game_tags (universe_id integer not null, kind text not null, tag text not null, primary key (universe_id, kind, tag));
+    create index if not exists game_tags_tag_idx on game_tags (kind, tag);
+    create table if not exists tag_state (universe_id integer primary key, hash text not null, checked text not null);
+    create table if not exists game_looks (universe_id integer primary key, look text not null, brightness real, saturation real, hue real, checked text not null);
+    create table if not exists search_terms (ts text not null, query text not null, rank integer not null, trending integer not null, players integer, primary key (ts, query));
+    create table if not exists game_events (universe_id integer not null, event_id text not null, title text, description text, starts text, ends text, status text, seen text not null, primary key (universe_id, event_id));
+    create table if not exists event_checks (universe_id integer primary key, ts text not null);
+    create table if not exists creator_changes (id integer primary key autoincrement, ts text not null, universe_id integer not null, from_id integer, from_name text, from_type text, to_id integer, to_name text, to_type text, unique (universe_id, ts));
     create table if not exists creators (creator_id integer not null, type text not null, name text, description text, owner_id integer, owner_type text, created text, verified integer, checked text not null, primary key (creator_id, type));
   `);
   const has = (table, column) => db.prepare(`pragma table_info(${table})`).all().some((c) => c.name === column);
@@ -49,6 +57,7 @@ export function openSqlite(file = 'data/bopzi.sqlite') {
   const addUpdate = db.prepare('insert or ignore into game_updates values (:universe_id, :updated_at, :seen_at)');
   const addGenre = db.prepare('insert or replace into genre_totals values (:ts, :genre, :players, :games)');
   const addEvent = db.prepare('insert or ignore into events (ts, universe_id, kind, value, prev, detail, key) values (:ts, :universe_id, :kind, :value, :prev, :detail, :key)');
+  const addHand = db.prepare('insert or ignore into creator_changes (ts, universe_id, from_id, from_name, from_type, to_id, to_name, to_type) values (:ts, :universe_id, :from_id, :from_name, :from_type, :to_id, :to_name, :to_type)');
   const addCreator = db.prepare('insert or replace into creators values (:creator_id, :type, :name, :description, :owner_id, :owner_type, :created, :verified, :checked)');
   const many = (stmt, rows = []) => {
     db.exec('begin');
@@ -56,10 +65,12 @@ export function openSqlite(file = 'data/bopzi.sqlite') {
   };
   return {
     kind: 'sqlite',
+    /** The open database, for the enrichment jobs that are local-only for now. */
+    db,
     /** Games seen recently, with what was last stored. A game that has been empty for a day is left out. */
     async trackedGames(sinceIso, emptyAfterIso, limit) {
-      return db.prepare('select universe_id as id, playing, first_seen, updated, genre_l1, peak from games where last_seen >= ? and (coalesce(playing, 1) > 0 or last_seen >= ?) order by last_seen desc limit ?').all(sinceIso, emptyAfterIso, limit)
-        .map((r) => ({ id: r.id, playing: r.playing, firstSeen: r.first_seen, updated: r.updated, genre: r.genre_l1, peak: r.peak }));
+      return db.prepare('select universe_id as id, playing, first_seen, updated, genre_l1, peak, creator_id, creator_name, creator_type from games where last_seen >= ? and (coalesce(playing, 1) > 0 or last_seen >= ?) order by last_seen desc limit ?').all(sinceIso, emptyAfterIso, limit)
+        .map((r) => ({ id: r.id, playing: r.playing, firstSeen: r.first_seen, updated: r.updated, genre: r.genre_l1, peak: r.peak, creatorId: r.creator_id, creatorName: r.creator_name, creatorType: r.creator_type }));
     },
     /** Searches done since a date, so the same word is not asked again right away. */
     async searchedSince(iso) { return db.prepare('select query from searches where ts >= ?').all(iso).map((r) => r.query); },
@@ -92,9 +103,9 @@ export function openSqlite(file = 'data/bopzi.sqlite') {
     async lastTotalTs() { return db.prepare('select max(ts) as t from totals').get().t ?? ''; },
     /** When per-game rows were last saved, so they are written about every five minutes however often the total is. */
     async lastSnapshotTs() { return db.prepare('select max(ts) as t from snapshots').get().t ?? ''; },
-    async save({ games = [], snapshots = [], charts = [], totals = [], updates = [], genres = [], creators = [], events = [] }) {
+    async save({ games = [], snapshots = [], charts = [], totals = [], updates = [], genres = [], creators = [], events = [], hands = [] }) {
       many(upsertGame, games); many(addSnap, snapshots); many(addChart, charts); many(addTotal, totals);
-      many(addUpdate, updates); many(addGenre, genres); many(addCreator, creators); many(addEvent, events);
+      many(addUpdate, updates); many(addGenre, genres); many(addCreator, creators); many(addEvent, events); many(addHand, hands);
     },
   };
 }

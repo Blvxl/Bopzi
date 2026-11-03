@@ -3,6 +3,8 @@
 export const SORTS = ['top-playing-now', 'top-trending', 'up-and-coming', 'top-revisited'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** A request that has not answered by now is given up on; without this one stalled connection can hold a whole run forever. */
+const REQUEST_TIMEOUT_MS = 25_000;
 
 /**
  * The pause between calls. Roblox lets only about 17 detail lookups through in a burst and then refuses for a while,
@@ -15,7 +17,7 @@ const pace = () => sleep(gap);
 async function getJson(url, { tries = 7, deadline = 0 } = {}) {
   let last = '';
   for (let i = 0; i < tries; i++) {
-    const res = await fetch(url, { headers: { accept: 'application/json', 'user-agent': 'bopzi-collector/1.0 (+https://bopzi.dev)' } }).catch((e) => ({ ok: false, status: 0, statusText: String(e.message ?? e) }));
+    const res = await fetch(url, { headers: { accept: 'application/json', 'user-agent': 'bopzi-collector/1.0 (+https://bopzi.dev)' }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }).catch((e) => ({ ok: false, status: 0, statusText: String(e.message ?? e) }));
     if (res.ok) { gap = Math.max(500, gap * 0.97); return res.json(); }
     last = `${res.status} ${res.statusText}`;
     if (res.status !== 429 && res.status < 500 && res.status !== 0) break;

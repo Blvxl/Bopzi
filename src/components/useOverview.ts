@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { linkSeries, type TotalRow } from '@/lib/series';
+import { PUBLISHED, published } from '@/lib/source';
 import type { Snapshot } from './ActivityChart';
 
 export type GameCard = { id: number; name: string; creator: string | null; playing: number; icon: string | null };
@@ -9,7 +10,7 @@ export type Riser = GameCard & { change: number; pct: number; spark: number[] };
 export type Stats = { peak: number; low: number; average: number; points: number; games: number };
 export type Visited = GameCard & { visits: number; favorites: number | null };
 export type Fresh = GameCard & { created: string };
-export type PulseEvent = { id: number; ts: string; kind: 'milestone' | 'new_high' | 'update' | 'new_game' | 'surge' | 'forecast' | 'comeback' | 'crash' | 'impact'; value: number | null; prev: number | null; detail: string | null; game: { id: number; name: string; genre: string | null; place: number | null; icon: string | null } };
+export type PulseEvent = { id: number; ts: string; kind: 'milestone' | 'new_high' | 'update' | 'new_game' | 'surge' | 'forecast' | 'comeback' | 'crash' | 'impact' | 'hands'; value: number | null; prev: number | null; detail: string | null; game: { id: number; name: string; genre: string | null; place: number | null; icon: string | null } };
 export type Overview = { history: Snapshot[]; total: number; stats: Stats | null; top: GameCard[]; rising: Riser[]; visited: Visited[]; fresh: Fresh[]; pulse: PulseEvent[]; error?: string };
 
 /** What the data route sends: the same, but with the raw totals (the page chains them) and the history already chained. */
@@ -17,7 +18,7 @@ type Loaded = Omit<Overview, 'history' | 'total'> & { totals: TotalRow[] };
 
 const EMPTY: Loaded = { totals: [], stats: null, top: [], rising: [], visited: [], fresh: [], pulse: [] };
 /** Everything except the live total and the feed is refreshed this often; those two arrive the moment they exist. */
-const REFRESH_MS = 60_000;
+const REFRESH_MS = PUBLISHED ? 15_000 : 60_000;
 /** The feed is shown one event at a time, about this far apart, so a batch from the collector reads like something happening. */
 const DRIP_MS = 3_000;
 const DRIP_MIN_MS = 1_200;
@@ -68,12 +69,12 @@ export function useOverview(pulseLimit = 40) {
     let active = true;
     const refresh = async () => {
       try {
-        const json = await fetch(`/api/terminal?pulse=${pulseLimit}`, { cache: 'no-store' }).then((r) => r.json());
+        const json = await fetch(PUBLISHED ? published('overview.json') : `/api/terminal?pulse=${pulseLimit}`, { cache: 'no-store' }).then((r) => r.json());
         if (!active) return;
         setLoaded({ ...EMPTY, ...json });
         // The first answer fills the feed at once; later ones add only what is new, one at a time.
         const first = known.current.size === 0 && queue.current.length === 0;
-        arrive(json.pulse ?? [], first);
+        arrive((json.pulse ?? []).slice(0, pulseLimit), first);
         setError(json.error ?? '');
       } catch {
         if (active) setError('Could not reach the collection.');
@@ -89,7 +90,8 @@ export function useOverview(pulseLimit = 40) {
   const startTs = loaded?.totals.at(-1)?.ts ?? '';
   const startEvent = loaded?.pulse.length ? Math.max(...loaded.pulse.map((p) => p.id)) : 0;
   useEffect(() => {
-    if (!ready || typeof EventSource === 'undefined') return;
+    // The public site has no live connection to open: it asks for the published files every few seconds instead.
+    if (!ready || PUBLISHED || typeof EventSource === 'undefined') return;
     const source = new EventSource(`/api/stream?since=${encodeURIComponent(startTs)}&event=${startEvent}`);
     source.addEventListener('live', (e) => setLiveTotals((old) => [...old, JSON.parse((e as MessageEvent).data) as TotalRow]));
     source.addEventListener('pulse', (e) => arrive(JSON.parse((e as MessageEvent).data) as PulseEvent[]));

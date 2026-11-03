@@ -67,3 +67,21 @@ WHERE g.playing > 0 GROUP BY c.creator_id ORDER BY players DESC LIMIT 15;
 - **discover** (every few minutes): searches Roblox for games not yet known, by fixed words, studio names and unusual words from game names; also looks up studios once a day.
 
 Roblox only allows about 17 detail lookups in a burst, which is why not every game is refreshed every tick.
+
+## Lists and extra tables (added later)
+
+The site's Lists pages (`/lists`) are built from the same data, plus these tables, filled by `collector/enrich.mjs` (scheduled by `npm run collect:local`):
+
+| Table | What it holds | How it is made |
+|---|---|---|
+| `game_tags` | `kind` (type, theme, feature, brand, extra, language) and `tag` per game | Word matching on each busy game's name and description (`collector/tagger.mjs`). Crude: a game can have several tags and some are missed. |
+| `tag_state` | A hash of the text last read | So a game is only read again when its name or description changes. |
+| `game_looks` | The colour mood of a game's icon | Pixels of the icon, reduced to 16×16: Dark & moody, Light & soft, Vivid, Warm, Cool, Green, Muted. Colour only, not art style. |
+| `search_terms` | Roblox's top three search suggestions for each first letter, with players | Roblox's own suggestion box, every 3 hours. `players` is the players in games whose name matches the search. Roblox publishes no search counts. |
+| `game_events` | Events a game scheduled on Roblox (title, starts, ends) | Roblox's public events call, 100 busy games at a time. |
+| `creator_changes` | A game's owner changing (old and new owner) | Compared at every lookup, games with 100+ players. Also appears in the live feed as "changed hands". |
+
+Notes for the bot:
+- **Earnings are a rough estimate, not data.** The "Top earners" list multiplies average players over the last day by 730 hours a month by about 5 Robux per player-hour, the same for every game. Roblox does not publish what games make.
+- **Ads are not covered.** Roblox only shows sponsored results to signed-in accounts, and Bopzi does not automate an account.
+- **Growth on the lists compares with about a day ago, or the start of the history if that is shorter**, using only games present at both times, so finding more games does not look like growth.

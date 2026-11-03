@@ -12,6 +12,11 @@ export const DICTIONARY: Record<string, string> = {
   game_updates: "Each time a game's `updated` time moved, meaning the developer shipped an update. `updated_at` is when Roblox says it happened, `seen_at` when Bopzi noticed.",
   chart_entries: "Where games stood on Roblox's own lists (top-playing-now, top-trending, up-and-coming, top-revisited) at each snapshot run. `rank` 1 is best.",
   creators: "The groups (studios) that own games: name, description, owner, creation date, verified badge. Join on games.creator_id where games.creator_type = 'Group'.",
+  game_tags: "What each busy game is, read from its name and description by matching words: kind is type, theme, feature, brand, extra (paid extras it mentions) or language. A game can have several. Crude compared with an AI reading; treat it as a guide.",
+  game_looks: "The colour mood of each busy game's icon (Dark & moody, Light & soft, Vivid, Warm, Cool, Green, Muted), measured from its pixels. Colour only, not art style.",
+  search_terms: "What Roblox suggests as players start typing, read every few hours: rank 1 is the best suggestion, trending 1 means Roblox flags it as trending, players is the players in the games that search finds. Order, not search volume.",
+  game_events: "Events a game has scheduled on Roblox (updates, parties): title, description, starts and ends. Only the busiest games are checked, a hundred at a time.",
+  creator_changes: "Each time a game's owner (user or group) changed, with the old and new owner.",
   searches: 'Words Bopzi has searched Roblox for to find games, and how many new games each found. Internal bookkeeping.',
 };
 
