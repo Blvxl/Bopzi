@@ -84,7 +84,7 @@ export async function search(query, sessionId, pages = 5) {
     const body = await getJson(`https://apis.roblox.com/search-api/omni-search?${q}`);
     for (const group of body.searchResults ?? []) for (const c of group.contents ?? []) if (c.universeId) out.push({
       universeId: c.universeId, name: c.name ?? '', playing: c.playerCount ?? 0, rootPlaceId: c.rootPlaceId ?? null,
-      creatorId: c.creatorId || null, creatorName: c.creatorName || null,
+      creatorId: c.creatorId || null, creatorName: c.creatorName || null, upVotes: c.totalUpVotes ?? null, downVotes: c.totalDownVotes ?? null,
     });
     token = body.nextPageToken;
     if (!token) break;
@@ -112,3 +112,20 @@ titan god angel demon heaven maze puzzle riddle mystery detective murder mafia i
 flood fire earthquake tornado storm volcano meteor apocalypse wasteland bunker base fort team squad clan guild server rp life hangout
 chat social avatar outfit fashion model runway makeup hair nails salon spa pool beach lake river bridge raft camp camping hiking mountain`
   .split(/\s+/).map((w) => w.replace(/-/g, ' '));
+
+/** Name, description, owner, creation date and verified badge for many groups (up to 100 a call). */
+export async function groups(ids, deadline = 0) {
+  const out = new Map();
+  for (const part of chunks(ids, 100)) {
+    if (deadline && Date.now() > deadline) break;
+    try {
+      const body = await getJson(`https://groups.roblox.com/v2/groups?groupIds=${part.join(',')}`, { deadline });
+      for (const g of body.data ?? []) out.set(g.id, g);
+    } catch (e) {
+      if (!deadline) throw e;
+      break;
+    }
+    await pace();
+  }
+  return out;
+}

@@ -47,14 +47,14 @@ export function RisingCard({ game }: { game: Riser }) {
   );
 }
 
-export function GameRow({ game, rank, max }: { game: GameCard; rank: number; max: number }) {
+export function GameRow({ game, rank, max, value, sub }: { game: GameCard; rank: number; max?: number; value?: string; sub?: string }) {
   return (
     <div className="g-row">
       <span className="g-rank">{rank}</span>
       <GameIcon game={game} size={40} />
-      <div className="g-name"><strong title={game.name}>{game.name}</strong><span>{game.creator ?? 'Roblox experience'}</span></div>
-      <div className="g-bar" aria-hidden="true"><i style={{ width: `${Math.max(3, (game.playing / max) * 100)}%` }} /></div>
-      <b className="g-num" title={full(game.playing)}>{compact(game.playing)}</b>
+      <div className="g-name"><strong title={game.name}>{game.name}</strong><span>{sub ?? game.creator ?? 'Roblox experience'}</span></div>
+      {max ? <div className="g-bar" aria-hidden="true"><i style={{ width: `${Math.max(3, (game.playing / max) * 100)}%` }} /></div> : <span />}
+      <b className="g-num" title={full(game.playing)}>{value ?? compact(game.playing)}</b>
     </div>
   );
 }

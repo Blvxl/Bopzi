@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 
 export type Snapshot = { ts: string; players: number; games: number };
 /** What the cursor is over. `estimated` is true between two snapshots, where the value is read off the curve. */
@@ -10,9 +10,11 @@ export type Range = typeof RANGES[number];
 
 const DURATIONS: Record<Exclude<Range, 'All'>, number> = { '1D': 864e5, '1W': 6048e5, '1M': 2592e6, '1Y': 31536e6 };
 const PAD = { top: 38, bottom: 22, right: 16 };
-const ACCENT = '#ffd60a';
+const ACCENT = '#ff941f';
 /** How often the header number is told where the cursor is, in ms. */
 const REPORT_EVERY = 66;
+/** How long a new point takes to glide into place, in ms. */
+const GLIDE_MS = 900;
 /** How fast the cursor catches up with the pointer each frame (1 = instantly). */
 const FOLLOW = 0.4;
 
@@ -231,6 +233,50 @@ export default function ActivityChart({ history, range, onScrub }: { history: Sn
   useEffect(() => () => { cancelAnimationFrame(live.current.raf); clearTimeout(live.current.timer); }, []);
   useEffect(() => { leave(); }, [range, leave]);
 
+  // A new point does not pop in: the line, the area and the end dot glide from where they were to where they now belong,
+  // and the points already there ease aside as the time axis makes room. The paths are redrawn by hand, outside React.
+  const shown = useRef<{ key: string; runs: { xs: number[]; ys: number[] }[]; end: { x: number; y: number } | null } | null>(null);
+  const glide = useRef(0);
+  useLayoutEffect(() => {
+    cancelAnimationFrame(glide.current);
+    if (!model) { shown.current = null; return; }
+    const to = { key: `${range}|${w}|${h}`, runs: model.runs.map((r) => ({ xs: r.xs, ys: r.ys })), end: model.xy.at(-1) ?? null };
+    const from = shown.current;
+    // Gliding needs the same kind of picture before and after: same range and size, same breaks, at most one new point at the end of a run.
+    const same = from && from.key === to.key && from.runs.length === to.runs.length && to.runs.every((r, i) => r.xs.length - from.runs[i].xs.length === 0 || r.xs.length - from.runs[i].xs.length === 1);
+    if (!same || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { shown.current = to; return; }
+    const start = from.runs.map((r, i) => {
+      const grown = to.runs[i].xs.length > r.xs.length;
+      return { xs: grown ? [...r.xs, r.xs.at(-1)!] : r.xs, ys: grown ? [...r.ys, r.ys.at(-1)!] : r.ys };
+    });
+    const floor = h - PAD.bottom;
+    const root = box.current;
+    const lines = to.runs.map((_, i) => root?.querySelector<SVGPathElement>(`path[data-line="${i}"]`) ?? null);
+    const areas = to.runs.map((_, i) => root?.querySelector<SVGPathElement>(`path[data-area="${i}"]`) ?? null);
+    const t0 = performance.now();
+    const fromEnd = from.end ?? to.end;
+    peakLabel.current?.style.setProperty('opacity', '0');
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / GLIDE_MS);
+      const e = 1 - (1 - k) ** 4; // quick start, long soft landing
+      const runs = to.runs.map((r, i) => ({ xs: r.xs.map((x, j) => start[i].xs[j] + (x - start[i].xs[j]) * e), ys: r.ys.map((y, j) => start[i].ys[j] + (y - start[i].ys[j]) * e) }));
+      runs.forEach((r, i) => {
+        const run: Run = { ...r, m: slopes(r.xs, r.ys) };
+        const line = pathOf(run);
+        lines[i]?.setAttribute('d', line);
+        if (r.xs.length > 1) areas[i]?.setAttribute('d', `${line}L${r.xs.at(-1)!.toFixed(2)} ${floor}L${r.xs[0].toFixed(2)} ${floor}Z`);
+      });
+      if (to.end && fromEnd) latest.current?.style.setProperty('transform', `translate(${fromEnd.x + (to.end.x - fromEnd.x) * e}px, ${fromEnd.y + (to.end.y - fromEnd.y) * e}px)`);
+      shown.current = { key: to.key, runs, end: to.end && fromEnd ? { x: fromEnd.x + (to.end.x - fromEnd.x) * e, y: fromEnd.y + (to.end.y - fromEnd.y) * e } : to.end };
+      if (k < 1) glide.current = requestAnimationFrame(step);
+      else { shown.current = to; if (!live.current.shown) peakLabel.current?.style.setProperty('opacity', '1'); }
+    };
+    // Show the starting picture before the browser paints, so the new shape never flashes at its final position first.
+    step(t0);
+    glide.current = requestAnimationFrame(step);
+  }, [model, range, w, h]);
+  useEffect(() => () => cancelAnimationFrame(glide.current), []);
+
   const last = model?.xy[model.xy.length - 1];
   // The highest point in view gets a label, like the peak marker above RoTerminal's line.
   const peak = model && model.pts.length > 2 ? { ...model.xy[model.peak], v: model.pts[model.peak].v, when: peakTime(model.pts[model.peak].s.ts, range) } : null;
@@ -253,19 +299,12 @@ export default function ActivityChart({ history, range, onScrub }: { history: Sn
             <mask id="sc-edge" maskUnits="userSpaceOnUse" x="0" y="0" width={w} height={h}><rect width={w} height={h} fill="url(#sc-edge-fade)" /></mask>
           </defs>
           <g key={range} mask="url(#sc-edge)">
-            {model.paths.map((p, i) => p.area && <path key={`a${i}`} d={p.area} fill="url(#sc-fill)" className="sc-area" />)}
-            {model.paths.map((p, i) => <path key={`d${i}`} d={p.line} pathLength={1} fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sc-line" />)}
+            {model.paths.map((p, i) => p.area && <path key={`a${i}`} data-area={i} d={p.area} fill="url(#sc-fill)" className="sc-area" />)}
+            {model.paths.map((p, i) => <path key={`d${i}`} data-line={i} d={p.line} pathLength={1} fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sc-line" />)}
           </g>
           {/* The part after the cursor dims, so the eye sees where "then" ends and "now" begins. Moving one rectangle is far cheaper than clipping the whole curve every frame. */}
           <rect ref={veil} className="sc-veil" x="0" y="0" width={w} height={h} />
 
-          {peak && (
-            <g ref={peakLabel} className="sc-fade sc-peak">
-              <text x={peak.x} y={peak.y - 12} textAnchor={peak.x < 64 ? 'start' : peak.x > plotW - 64 ? 'end' : 'middle'}>
-                <tspan className="sc-peak-v">{compact(peak.v)}</tspan><tspan dx="6" className="sc-peak-t">{peak.when}</tspan>
-              </text>
-            </g>
-          )}
           {last && (
             <g ref={latest} className="sc-fade" style={{ transform: `translate(${last.x}px, ${last.y}px)` }}>
               <circle r="6" fill="none" stroke={ACCENT} strokeWidth="1.5" className="sc-ring" />

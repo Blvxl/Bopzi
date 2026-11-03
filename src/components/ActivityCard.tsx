@@ -1,9 +1,8 @@
 'use client';
 
 import NumberFlow from '@number-flow/react';
-import { ChevronDown } from 'lucide-react';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import ActivityChart, { RANGES, pointsFor, type Range, type Scrub, type Snapshot } from './ActivityChart';
+import { useCallback, useMemo, useState } from 'react';
+import ActivityChart, { pointsFor, type Range, type Scrub, type Snapshot } from './ActivityChart';
 
 const LIVE_WITHIN = 12 * 60e3;
 const clock = (ts: string, range: Range) => new Date(ts).toLocaleString(undefined, range === '1D' || range === '1W' ? { weekday: 'short', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -26,16 +25,10 @@ export default function ActivityCard({ history }: { history: Snapshot[] }) {
   const live = !!latest && Date.now() - new Date(latest.ts).getTime() < LIVE_WITHIN;
 
   // The highlight slides under whichever range is active.
-  const seg = useRef<HTMLDivElement>(null);
-  const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
-  useLayoutEffect(() => {
-    const on = seg.current?.querySelector<HTMLElement>('button[aria-pressed="true"]');
-    if (on) setPill((p) => ({ left: on.offsetLeft, width: on.offsetWidth, ready: p.ready || p.width > 0 }));
-  }, [range]);
 
   return (
     <section className="gc">
-      <h2 className="gc-title">Tracked games</h2>
+      <h2 className="gc-title">Players online</h2>
       <div className="gc-value">{shown ? <NumberFlow value={shown.players} locales="en-US" format={{ maximumFractionDigits: 0 }} {...roll} /> : '—'}</div>
       <div className="gc-sub">
         {change !== null
@@ -48,15 +41,6 @@ export default function ActivityCard({ history }: { history: Snapshot[] }) {
         {shown && <span className="gc-when">{clock(shown.ts, range)}{scrub?.estimated ? ' · est.' : ''}</span>}
       </div>
       <ActivityChart history={history} range={range} onScrub={onScrub} />
-      <div className="gc-foot">
-        <div className="gc-seg" ref={seg} role="group" aria-label="Time range">
-          <span className={`gc-seg-pill${pill.ready ? ' placed' : ''}`} style={{ left: pill.left, width: pill.width }} aria-hidden="true" />
-          <span className={`gc-live${live ? '' : ' off'}`}><i />{live ? 'Live' : 'Paused'}</span>
-          {RANGES.map((r) => <button key={r} onClick={() => setRange(r)} aria-pressed={range === r}>{r}</button>)}
-        </div>
-        <span className="gc-metric">Players <ChevronDown size={14} aria-hidden="true" /></span>
-      </div>
-      <p className="gc-note">Adds up the players in the games Bopzi tracks, not every game on Roblox. Between two snapshots the value is read off the curve and marked est.</p>
     </section>
   );
 }

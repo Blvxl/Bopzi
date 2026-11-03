@@ -1,6 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { icons } from '@/lib/icons';
+import { latestEvents } from '@/lib/pulse';
+import { linkSeries, type TotalRow } from '@/lib/series';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,21 +14,6 @@ const DAY = 864e5;
 type Top = { id: number; name: string; creator: string | null; playing: number };
 type Move = { id: number; name: string; creator: string | null; first: number; last: number };
 
-// Game icons come from Roblox's thumbnail service. They rarely change, so they are remembered for a few minutes.
-const iconCache = new Map<number, { url: string; at: number }>();
-async function icons(ids: number[]) {
-  const need = ids.filter((id) => Date.now() - (iconCache.get(id)?.at ?? 0) > 10 * 60e3);
-  for (let i = 0; i < need.length; i += 50) {
-    try {
-      const res = await fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${need.slice(i, i + 50).join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
-      if (!res.ok) continue;
-      const body = await res.json() as { data?: { targetId: number; imageUrl?: string }[] };
-      for (const d of body.data ?? []) if (d.imageUrl) iconCache.set(d.targetId, { url: d.imageUrl, at: Date.now() });
-    } catch { /* the cards show an initial instead */ }
-  }
-  return (id: number) => iconCache.get(id)?.url ?? null;
-}
-
 /** Downsample a series to at most n points, keeping the last one. */
 const thin = (v: number[], n: number) => {
   if (v.length <= n) return v;
@@ -34,14 +22,18 @@ const thin = (v: number[], n: number) => {
 };
 
 /** The page's data: the headline total over time, the busiest games now, and the games climbing fastest. */
-export async function GET() {
+export async function GET(req: Request) {
+  const wanted = Number(new URL(req.url).searchParams.get('pulse'));
+  const pulseLimit = Number.isFinite(wanted) && wanted > 0 ? Math.min(wanted, 200) : 40;
   const file = process.env.BOPZI_DB ?? path.join(process.cwd(), 'data', 'bopzi.sqlite');
   if (!existsSync(file)) return Response.json({ history: [], top: [], rising: [], error: 'No local collection yet.' }, { headers });
   let db: DatabaseSync | undefined;
   try {
     db = new DatabaseSync(file, { readOnly: true });
-    // Totals only exist for runs that covered the wide set of games; earlier snapshots covered far fewer and are not comparable.
-    const history = db.prepare('SELECT ts, players, games FROM totals ORDER BY ts').all() as { ts: string; players: number; games: number }[];
+    // Every total, with how many of its players were in newly found games. The page chains them itself, so a total pushed live fits in.
+    const hasAdded = (db.prepare('PRAGMA table_info(totals)').all() as { name: string }[]).some((c) => c.name === 'added');
+    const totals = db.prepare(hasAdded ? 'SELECT ts, players, games, added FROM totals ORDER BY ts' : 'SELECT ts, players, games, NULL AS added FROM totals ORDER BY ts').all() as TotalRow[];
+    const history = linkSeries(totals);
     const total = history.at(-1)?.players ?? 0;
 
     const top = db.prepare('SELECT universe_id AS id, name, creator_name AS creator, playing FROM games WHERE playing > 0 ORDER BY playing DESC LIMIT 60').all() as Top[];
@@ -70,9 +62,27 @@ export async function GET() {
         .map((m) => ({ ...m, spark: thin((series.all(m.id, since) as { playing: number }[]).map((r) => r.playing), 32) }));
     }
 
-    const icon = await icons([...new Set([...top.map((t) => t.id), ...rising.map((r) => r.id)])]);
+    // Over the last 24 hours of totals: the high, the low and the average.
+    const dayAgo = history.length ? new Date(new Date(history[history.length - 1].ts).getTime() - DAY).toISOString() : '';
+    const day = history.filter((h) => h.ts >= dayAgo).map((h) => h.players);
+    const stats = day.length ? { peak: Math.max(...day), low: Math.min(...day), average: Math.round(day.reduce((a, b) => a + b, 0) / day.length), points: day.length, games: history.at(-1)!.games } : null;
+
+    // The most visited games ever, from the latest saved row of each, and games under a week old that already have players.
+    const visited = db.prepare(`SELECT g.universe_id AS id, g.name, g.creator_name AS creator, g.playing, s.visits, s.favorites
+      FROM games g JOIN snapshots s ON s.universe_id = g.universe_id AND s.ts = (SELECT MAX(ts) FROM snapshots WHERE universe_id = g.universe_id)
+      WHERE s.visits IS NOT NULL ORDER BY s.visits DESC LIMIT 8`).all() as (Top & { visits: number; favorites: number | null })[];
+    const fresh = db.prepare('SELECT universe_id AS id, name, creator_name AS creator, playing, created FROM games WHERE created >= ? AND playing >= 100 ORDER BY playing DESC LIMIT 8')
+      .all(new Date(Date.now() - 7 * DAY).toISOString()) as (Top & { created: string })[];
+
+    // The live feed: what just happened, newest first.
+    const pulse = await latestEvents(db, pulseLimit);
+
+    const icon = await icons([...new Set([...top, ...rising, ...visited, ...fresh].map((t) => t.id))]);
     return Response.json({
-      history, total,
+      history, total, stats,
+      pulse, totals,
+      visited: visited.map((v) => ({ ...v, icon: icon(v.id) })),
+      fresh: fresh.map((f) => ({ ...f, icon: icon(f.id) })),
       top: top.map((t) => ({ ...t, icon: icon(t.id) })),
       rising: rising.map((r) => ({ ...r, icon: icon(r.id) })),
     }, { headers });
