@@ -13,6 +13,8 @@ const SOURCE = process.env.BOPZI_SOURCE ?? 'http://127.0.0.1:3000';
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = 'site';
+// Supabase's newer secret keys (sb_secret_…) are not tokens, so they go in the apikey header only; the older service_role key is a token and also goes in Authorization.
+const auth = key?.startsWith('sb_') ? { apikey: key } : { authorization: `Bearer ${key}`, apikey: key };
 const only = process.argv[2];
 
 const LISTS = ['words', 'updates', 'hands', 'new-highs', 'new-games', 'genres', 'types', 'themes', 'features', 'brands', 'extras', 'languages', 'looks', 'searches', 'events', 'calendar', 'earners'];
@@ -33,13 +35,13 @@ async function put(name, body) {
   }
   if (!ready) {
     // Make sure the bucket exists and is public; "already exists" is fine.
-    await fetch(`${url}/storage/v1/bucket`, { method: 'POST', headers: { authorization: `Bearer ${key}`, apikey: key, 'content-type': 'application/json' }, body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }), signal: AbortSignal.timeout(20_000) }).catch(() => undefined);
+    await fetch(`${url}/storage/v1/bucket`, { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }), signal: AbortSignal.timeout(20_000) }).catch(() => undefined);
     ready = true;
   }
   const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${name}`, {
     method: 'POST',
     // Short cache, so a page that asks every few seconds sees new data soon.
-    headers: { authorization: `Bearer ${key}`, apikey: key, 'content-type': 'application/json', 'x-upsert': 'true', 'cache-control': 'max-age=10' },
+    headers: { ...auth, 'content-type': 'application/json', 'x-upsert': 'true', 'cache-control': 'max-age=10' },
     body, signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`upload ${name}: ${res.status} ${(await res.text()).slice(0, 160)}`);
