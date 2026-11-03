@@ -1,16 +1,45 @@
-import { Mark } from '@/components/Logo';
-import { SITE_DESCRIPTION, SITE_TAGLINE } from '@/lib/site';
+'use client';
 
-/** Placeholder while the new Bopzi is built: the collector and the first live pages come next. */
-export default function Home() {
+import Link from 'next/link';
+import ActivityCard from '@/components/ActivityCard';
+import { GameRow, RisingCard } from '@/components/GameParts';
+import { useOverview } from '@/components/useOverview';
+
+function Head({ title, href, note }: { title: string; href?: string; note?: string }) {
   return (
-    <main style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: '2rem', textAlign: 'center' }}>
-      <div style={{ maxWidth: 560 }}>
-        <Mark size={56} className="text-ivory" />
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 700, margin: '1.25rem 0 0.5rem' }}>{SITE_TAGLINE}</h1>
-        <p style={{ color: 'var(--color-ivory-dim)', lineHeight: 1.6 }}>{SITE_DESCRIPTION}</p>
-        <p style={{ marginTop: '1.5rem', color: 'var(--color-signal)', fontWeight: 600 }}>Being rebuilt. Back soon.</p>
-      </div>
+    <div className="sec-head">
+      <div><h2>{title}</h2>{note && <p>{note}</p>}</div>
+      {href && <Link href={href}>See all</Link>}
+    </div>
+  );
+}
+
+/** Overview: the player chart across the top, then what is climbing and what is busiest. */
+export default function Home() {
+  const data = useOverview();
+  const top = data?.top.slice(0, 10) ?? [];
+  const rising = data?.rising.slice(0, 8) ?? [];
+  return (
+    <main className="wrap">
+      <section className="hero"><ActivityCard history={data?.history ?? []} /></section>
+
+      <section className="sec">
+        <Head title="Rising now" href="/rising" note="Growing faster than the rest of Roblox over the last day" />
+        {rising.length
+          ? <div className="r-row">{rising.map((g) => <RisingCard key={g.id} game={g} />)}</div>
+          : <p className="empty">{data ? 'Climbing games show up once the collector has a few hours of history.' : 'Loading…'}</p>}
+      </section>
+
+      <section className="sec">
+        <Head title="Busiest right now" href="/games" note="Most players at the last collection" />
+        <div className="g-list">
+          {top.map((g, i) => <GameRow key={g.id} game={g} rank={i + 1} max={top[0]?.playing ?? 1} />)}
+          {!top.length && <p className="empty">{data ? 'No games yet.' : 'Loading…'}</p>}
+        </div>
+      </section>
+
+      {data?.error && <p className="empty" role="status">{data.error}</p>}
+      <footer className="foot">Independent. Not affiliated with Roblox. Player counts cover the games Bopzi tracks, not every game on Roblox.</footer>
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import SiteNav from '@/components/SiteNav';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from '@/lib/site';
 import './globals.css';
 
@@ -19,7 +20,10 @@ export const viewport: Viewport = { themeColor: '#111113' };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <SiteNav />
+        {children}
+      </body>
     </html>
   );
 }

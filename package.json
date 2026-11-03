@@ -11,9 +11,11 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
     "typecheck": "tsc --noEmit",
-    "collect": "node --env-file-if-exists=.env.local collector/run.mjs"
+    "collect": "node --env-file-if-exists=.env.local collector/run.mjs",
+    "collect:local": "node collector/watch-local.mjs"
   },
   "dependencies": {
+    "@number-flow/react": "^0.6.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.55.0",

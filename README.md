@@ -36,3 +36,7 @@ Open http://127.0.0.1:3000. Settings are listed in [.env.example](.env.example).
 Proprietary. See [LICENSE](LICENSE). Earlier copies published under MIT remain subject to the MIT terms that accompanied them.
 
 Bopzi is independent and is not affiliated with, endorsed by or sponsored by Roblox Corporation. Roblox is a trademark of its owner.
+
+## Local terminal data
+
+Run `npm run collect:local` in a separate terminal to collect Roblox snapshots into `data/bopzi.sqlite` approximately every five minutes. Keep it running while you want history to accumulate; it does not start automatically after a restart. The dashboard refreshes from this local database every 30 seconds. Its total covers only games in each snapshot, and history starts when collection starts. Missing collection periods appear as gaps. `npm run collect` remains available for a single collection using the configured storage.
